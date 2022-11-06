@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./", // baseUrl定义后，所有文件都会从baseUrl的相对路径下开始查找 https://www.typescriptlang.org/tsconfig#baseUrl
+    "strictNullChecks": true, // 检查潜在的null与undefined并给出提示 https://www.typescriptlang.org/tsconfig#strictNullChecks
+    "target": "es6", // target与module最常用是es6+esnext/es5+commonjs组合
+    "module": "esnext",
+    "moduleResolution": "node", // node为typescript社区中最常用的，推荐用于大多数项目
+    "esModuleInterop": true, // 改变ts对于import的转译规则，会自动在非esm导出的第三方库上定义default来导出，babel默认的转译规则与此方法相差无几 https://zhuanlan.zhihu.com/p/148081795
+    "experimentalDecorators": true,
+    "jsx": "react", // 一定设置为react后，自动将jsx/tsx文件的jsx片段转换成React.createElement；不能设置成react-jsx后，虽然写组件时不用导入React也无需继续指定jsxFactory与jsxFragment，但会污染esm打包文件！ https://www.typescriptlang.org/docs/handbook/jsx.html
+    "jsxFactory": "React.createElement",
+    "jsxFragmentFactory": "React.Fragment",
+    "noUnusedParameters": true,
+    "noUnusedLocals": true,
+    "noImplicitAny": true,
+    "lib": ["dom", "es2017"],
+    "skipLibCheck": true,
+    "stripInternal": true
+  },
+  "exclude": ["node_modules", "lib", "es"]
+}
