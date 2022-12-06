@@ -1,4 +1,4 @@
-import React, { useMemo, useState, cloneElement } from 'react';
+import React, { useMemo, useCallback, useState, cloneElement, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { useFloating } from '@floating-ui/react-dom';
 import { createPortal } from 'react-dom';
@@ -9,12 +9,17 @@ const containerMap = new Map();
 let portalContainer;
 const Portal = ({ children, container, }) => {
     const _container = useMemo(() => container || document.body, [container]);
-    if (!containerMap.has(_container)) {
+    const initPortalContainer = useCallback(() => {
         portalContainer = document.createElement("div");
         portalContainer.style.position = "absolute";
         portalContainer.style.zIndex = "9999";
         portalContainer.style.top = "0";
         portalContainer.style.left = "0";
+        portalContainer.style.width = "0";
+        portalContainer.style.height = "0";
+    }, []);
+    if (!containerMap.has(_container)) {
+        initPortalContainer();
         containerMap.set(_container, portalContainer);
         _container.appendChild(portalContainer); // 所及之处都会留下一个portal容器
     }
@@ -68,4 +73,45 @@ const Silly = () => {
     return React.createElement("div", null, "\"sillyMan\"");
 };
 
-export { Silly, Tooltip };
+const Wrapper = styled.div `
+  overflow-y: auto;
+  height: ${(props) => props.height};
+`;
+
+const PaddingTop = styled.div `
+  height: ${(props) => `${props.paddingTop}px`};
+`;
+
+const PaddingBottom = styled.div `
+  height: ${(props) => `${props.paddingBottom}px`};
+`;
+
+// const RenderZone = styled.div``;
+const dynamicHeight = 100;
+const VirtualList = ({ data, dependency, height, itemSize, }) => {
+    const [scrollTop, setScrollTop] = useState(0);
+    const wrapperRef = useRef(null);
+    // const itemCount = useMemo(() => data.length, [data]);
+    const renderCount = useMemo(() => ((height || 500) / itemSize) + 2, [height]); // 多渲染两个防止空白
+    const renderStartIndex = useMemo(() => Math.floor(scrollTop / itemSize), [scrollTop]);
+    const paddingTop = useMemo(() => scrollTop, [scrollTop]);
+    useEffect(() => {
+        var _a;
+        const handleVirtualScroll = (e) => {
+            setScrollTop(e.currentTarget.scrollTop);
+        };
+        (_a = wrapperRef.current) === null || _a === void 0 ? void 0 : _a.addEventListener('scroll', handleVirtualScroll);
+        return () => {
+            var _a;
+            (_a = wrapperRef.current) === null || _a === void 0 ? void 0 : _a.removeEventListener('scroll', handleVirtualScroll);
+        };
+    }, []);
+    return (React.createElement(Wrapper, { ref: wrapperRef, height: !dependency ? height || 500 : dynamicHeight },
+        React.createElement(PaddingTop, { paddingTop: paddingTop }),
+        data.slice(renderStartIndex, renderStartIndex + renderCount).map(item => {
+            return item;
+        }),
+        React.createElement(PaddingBottom, null)));
+};
+
+export { Silly, Tooltip, VirtualList };

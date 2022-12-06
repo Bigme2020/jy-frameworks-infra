@@ -1,0 +1,36 @@
+{
+  "name": "react-components-doc",
+  "version": "0.0.0",
+  "description": "documentation for react-components based on docz",
+  "keywords": [
+    "documentation",
+    "docz",
+    "react-components"
+  ],
+  "author": "Bigme2020 <2606249370@qq.com>",
+  "homepage": "https://github.com/Bigme2020/my-components#readme",
+  "license": "ISC",
+  "main": "lib/react-components-doc.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bigme2020/my-components.git"
+  },
+  "scripts": {
+    "test": "node ./__tests__/react-components-doc.test.js"
+  },
+  "bugs": {
+    "url": "https://github.com/Bigme2020/my-components/issues"
+  },
+  "dependencies": {
+    "docz": "^2.4.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

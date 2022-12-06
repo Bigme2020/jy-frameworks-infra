@@ -11,4 +11,12 @@ declare const Tooltip: FC<TooltipProp>;
 
 declare const Silly: FC;
 
-export { Silly, Tooltip };
+interface VirtualListProps {
+    data: any[];
+    dependency?: HTMLElement;
+    height?: number;
+    itemSize: number;
+}
+declare const VirtualList: FC<VirtualListProps>;
+
+export { Silly, Tooltip, VirtualList };

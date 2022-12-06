@@ -1,8 +1,8 @@
-import React, { FC, ReactElement } from "react";
+import React, { FC, ReactElement } from 'react'
 
 export const Silly: FC = (): ReactElement => {
-  return <div>"sillyMan"</div>;
-};
+  return <div>"sillyMan"</div>
+}
 export const Smart: FC = (): ReactElement => {
-  return <div>"smartMan"</div>;
-};
+  return <div>"smartMan"</div>
+}

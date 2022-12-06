@@ -11,12 +11,17 @@ const containerMap = new Map();
 let portalContainer;
 const Portal = ({ children, container, }) => {
     const _container = React.useMemo(() => container || document.body, [container]);
-    if (!containerMap.has(_container)) {
+    const initPortalContainer = React.useCallback(() => {
         portalContainer = document.createElement("div");
         portalContainer.style.position = "absolute";
         portalContainer.style.zIndex = "9999";
         portalContainer.style.top = "0";
         portalContainer.style.left = "0";
+        portalContainer.style.width = "0";
+        portalContainer.style.height = "0";
+    }, []);
+    if (!containerMap.has(_container)) {
+        initPortalContainer();
         containerMap.set(_container, portalContainer);
         _container.appendChild(portalContainer); // 所及之处都会留下一个portal容器
     }
@@ -70,5 +75,47 @@ const Silly = () => {
     return React.createElement("div", null, "\"sillyMan\"");
 };
 
+const Wrapper = styled.div `
+  overflow-y: auto;
+  height: ${(props) => props.height};
+`;
+
+const PaddingTop = styled.div `
+  height: ${(props) => `${props.paddingTop}px`};
+`;
+
+const PaddingBottom = styled.div `
+  height: ${(props) => `${props.paddingBottom}px`};
+`;
+
+// const RenderZone = styled.div``;
+const dynamicHeight = 100;
+const VirtualList = ({ data, dependency, height, itemSize, }) => {
+    const [scrollTop, setScrollTop] = React.useState(0);
+    const wrapperRef = React.useRef(null);
+    // const itemCount = useMemo(() => data.length, [data]);
+    const renderCount = React.useMemo(() => ((height || 500) / itemSize) + 2, [height]); // 多渲染两个防止空白
+    const renderStartIndex = React.useMemo(() => Math.floor(scrollTop / itemSize), [scrollTop]);
+    const paddingTop = React.useMemo(() => scrollTop, [scrollTop]);
+    React.useEffect(() => {
+        var _a;
+        const handleVirtualScroll = (e) => {
+            setScrollTop(e.currentTarget.scrollTop);
+        };
+        (_a = wrapperRef.current) === null || _a === void 0 ? void 0 : _a.addEventListener('scroll', handleVirtualScroll);
+        return () => {
+            var _a;
+            (_a = wrapperRef.current) === null || _a === void 0 ? void 0 : _a.removeEventListener('scroll', handleVirtualScroll);
+        };
+    }, []);
+    return (React.createElement(Wrapper, { ref: wrapperRef, height: !dependency ? height || 500 : dynamicHeight },
+        React.createElement(PaddingTop, { paddingTop: paddingTop }),
+        data.slice(renderStartIndex, renderStartIndex + renderCount).map(item => {
+            return item;
+        }),
+        React.createElement(PaddingBottom, null)));
+};
+
 exports.Silly = Silly;
 exports.Tooltip = Tooltip;
+exports.VirtualList = VirtualList;

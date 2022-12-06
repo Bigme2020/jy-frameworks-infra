@@ -9,12 +9,17 @@ const containerMap = new Map();
 let portalContainer;
 const Portal = ({ children, container, }) => {
     const _container = react.useMemo(() => container || document.body, [container]);
-    if (!containerMap.has(_container)) {
+    const initPortalContainer = react.useCallback(() => {
         portalContainer = document.createElement("div");
         portalContainer.style.position = "absolute";
         portalContainer.style.zIndex = "9999";
         portalContainer.style.top = "0";
         portalContainer.style.left = "0";
+        portalContainer.style.width = "0";
+        portalContainer.style.height = "0";
+    }, []);
+    if (!containerMap.has(_container)) {
+        initPortalContainer();
         containerMap.set(_container, portalContainer);
         _container.appendChild(portalContainer); // 所及之处都会留下一个portal容器
     }
