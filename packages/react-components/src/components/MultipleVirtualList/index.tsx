@@ -6,18 +6,20 @@ import React, {
   useEffect,
   useRef,
   useState,
-} from 'react';
-import { RenderConfig } from './types';
-import { MVirtualList } from './components';
-import { throttle } from './utils';
+} from 'react'
+import { RenderConfig } from './types'
+import { MVirtualList } from './components'
+import { throttle } from './utils'
+
+const a = 1
 
 interface MultipleVirtualListProps {
-  renderConfig: RenderConfig;
-  width?: number | string;
-  height: number | string;
-  boundary?: number;
-  fetchOnScroll?: boolean;
-  fetchOnBottom?: boolean;
+  renderConfig: RenderConfig
+  width?: number | string
+  height: number | string
+  boundary?: number
+  fetchOnScroll?: boolean
+  fetchOnBottom?: boolean
 }
 
 /**
@@ -37,14 +39,14 @@ export const MultipleVirtualList: FC<MultipleVirtualListProps> = ({
   fetchOnBottom = false,
   boundary = 0,
 }): ReactElement => {
-  const [_height, setHeight] = useState(0); // 用于外部height传入100%时，内部等挂载后去获取高度
-  const [scrollTop, setScrollTop] = useState(0);
+  const [_height, setHeight] = useState(0) // 用于外部height传入100%时，内部等挂载后去获取高度
+  const [scrollTop, setScrollTop] = useState(0)
 
-  const divRef = useRef<HTMLDivElement>(null);
-  const currentFetchIndex = useRef(0);
+  const divRef = useRef<HTMLDivElement>(null)
+  const currentFetchIndex = useRef(0)
   const setCurrentFetchIndex = (val: number) => {
-    currentFetchIndex.current = val;
-  };
+    currentFetchIndex.current = val
+  }
 
   const scrollFetch = useCallback(() => {
     if (fetchOnScroll) {
@@ -52,18 +54,18 @@ export const MultipleVirtualList: FC<MultipleVirtualListProps> = ({
         renderConfig[currentFetchIndex.current]?.fetchMore &&
         typeof renderConfig[currentFetchIndex.current]?.fetchMore === 'function'
       ) {
-        renderConfig[currentFetchIndex.current].fetchMore!();
+        renderConfig[currentFetchIndex.current].fetchMore!()
       }
     }
-  }, [fetchOnScroll]);
+  }, [fetchOnScroll])
 
-  const throttledScrollFetch = throttle(scrollFetch, 2000);
-  
+  const throttledScrollFetch = throttle(scrollFetch, 2000)
+
   const onScroll = useCallback((e: UIEvent<HTMLDivElement>) => {
-    const _scrollTop = e.currentTarget.scrollTop;
-    setScrollTop(_scrollTop);
-    throttledScrollFetch();
-  }, []);
+    const _scrollTop = e.currentTarget.scrollTop
+    setScrollTop(_scrollTop)
+    throttledScrollFetch()
+  }, [])
 
   const onBottom = (index: number) => {
     if (fetchOnBottom) {
@@ -73,16 +75,16 @@ export const MultipleVirtualList: FC<MultipleVirtualListProps> = ({
           renderConfig[index] &&
           typeof renderConfig[index].fetchMore === 'function'
         ) {
-          renderConfig[index].fetchMore!();
+          renderConfig[index].fetchMore!()
         }
-      };
+      }
     }
-    return () => setCurrentFetchIndex(index);
-  };
+    return () => setCurrentFetchIndex(index)
+  }
 
   useEffect(() => {
-    setHeight(divRef.current?.getBoundingClientRect().height || 0); // 若height传的100%，则需要在这边获取_height
-  }, [divRef]);
+    setHeight(divRef.current?.getBoundingClientRect().height || 0) // 若height传的100%，则需要在这边获取_height
+  }, [divRef])
 
   return (
     <div
@@ -93,7 +95,8 @@ export const MultipleVirtualList: FC<MultipleVirtualListProps> = ({
         position: 'relative',
         overflow: 'auto',
       }}
-      onScroll={onScroll}>
+      onScroll={onScroll}
+    >
       {_height
         ? renderConfig.map((dataItem, index) => {
             return (
@@ -110,9 +113,9 @@ export const MultipleVirtualList: FC<MultipleVirtualListProps> = ({
                 renderGap={dataItem?.renderGap || 0}
                 boundary={boundary}
               />
-            );
+            )
           })
         : null}
     </div>
-  );
-};
+  )
+}
