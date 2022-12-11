@@ -8,11 +8,11 @@ import React, {
 } from 'react'
 import styled from 'styled-components'
 import { useFloating } from '@floating-ui/react-dom'
-import { Portal } from '../Portal'
+import Portal from '../Portal'
 
-type Placement = 'left' | 'right' | 'top' | 'bottom'
+export type Placement = 'left' | 'right' | 'top' | 'bottom'
 
-interface TooltipProp {
+export interface TooltipProps {
   title: string
   children: any
   placement?: Placement
@@ -36,7 +36,7 @@ const StyledTooltip = styled.div<TooltipAttrs>`
   user-select: none;
 `
 
-export const Tooltip: FC<TooltipProp> = ({
+const Tooltip: FC<TooltipProps> = ({
   title,
   children,
   placement,
@@ -90,3 +90,5 @@ export const Tooltip: FC<TooltipProp> = ({
     </>
   )
 }
+
+export default Tooltip

@@ -1,7 +1,7 @@
 import { FC, ReactElement, ReactNode, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 
-interface PortalProps {
+export interface PortalProps {
   container?: HTMLElement
   children: HTMLElement | ReactElement
 }
@@ -11,10 +11,7 @@ const containerMap = new Map()
 // 当前取出的portal容器
 let portalContainer: HTMLElement
 
-export const Portal: FC<PortalProps> = ({
-  children,
-  container,
-}): ReactElement => {
+const Portal: FC<PortalProps> = ({ children, container }): ReactElement => {
   const _container = useMemo(() => container || document.body, [container])
 
   const initPortalContainer = useCallback(() => {
@@ -36,3 +33,5 @@ export const Portal: FC<PortalProps> = ({
   }
   return createPortal(children as ReactNode, portalContainer)
 }
+
+export default Portal

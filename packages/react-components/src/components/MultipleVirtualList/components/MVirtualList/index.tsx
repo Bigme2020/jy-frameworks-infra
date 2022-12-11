@@ -12,36 +12,44 @@ import React, {
 } from 'react'
 import { Waypoint } from 'react-waypoint'
 
-type MVirtualListProps = {
+export type MVirtualListProps = {
   outerHeight: number
   scrollTop: number
   itemSize: number
   dataLength: number
-  listIndex: number
   renderGap: number
   boundary: number
-  renderTitle?: (ref: RefObject<any>) => ReactElement | HTMLElement
-  onBottom?: (index: number) => void
+  renderPrefix?: (
+    ref?: RefObject<HTMLElement>
+  ) => ReactElement | HTMLElement | null
+  renderSuffix?: (
+    ref?: RefObject<HTMLElement>
+  ) => ReactElement | HTMLElement | null
+  onBottom?: (index?: number) => void
+  onLeave?: () => void
   renderItem?: (
     index: number,
     style: CSSProperties
   ) => ReactElement | HTMLElement
 }
 
-export const MVirtualList: FC<MVirtualListProps> = ({
+const MVirtualList: FC<MVirtualListProps> = ({
   outerHeight,
   scrollTop,
   itemSize,
   dataLength,
-  listIndex,
   renderGap,
   boundary,
-  renderTitle,
+  renderPrefix,
+  renderSuffix,
   onBottom,
+  onLeave,
   renderItem,
 }): ReactElement => {
   const listRef = useRef<HTMLElement>(null)
-  const titleRef = useRef<HTMLElement>(null)
+  const prefixRef = useRef<HTMLElement>(null)
+  const suffixRef = useRef<HTMLElement>(null)
+
   const [offsetTop, setOffsetTop] = useState<number>(
     outerHeight + itemSize + renderGap
   ) // 初始值先让所有子列表都远离主视口 避免闪烁
@@ -112,19 +120,25 @@ export const MVirtualList: FC<MVirtualListProps> = ({
   return (
     <div>
       <>
-        {renderTitle ? renderTitle(titleRef) : null}
+        {renderPrefix ? renderPrefix(prefixRef) : null}
         <div
           style={{ position: 'relative', height: `${paddingTop}px` }}
           ref={listRef as Ref<any>}
         >
           <>{renderData()}</>
         </div>
+        {renderSuffix ? renderSuffix(suffixRef) : null}
         <Waypoint
-          onEnter={() => {
-            if (typeof onBottom === 'function') onBottom(listIndex + 1)
+          onEnter={({ previousPosition }) => {
+            if (previousPosition && typeof onBottom === 'function') onBottom()
+          }}
+          onLeave={({ previousPosition }) => {
+            if (previousPosition && typeof onLeave === 'function') onLeave()
           }}
         />
       </>
     </div>
   )
 }
+
+export default MVirtualList

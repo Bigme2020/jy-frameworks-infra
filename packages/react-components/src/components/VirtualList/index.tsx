@@ -8,7 +8,7 @@ import React, {
   CSSProperties,
 } from 'react'
 
-type VirtualListProps = {
+export interface VirtualListProps {
   height: number
   itemSize: number
   data: Array<any>
@@ -19,7 +19,7 @@ type VirtualListProps = {
 }
 
 // TODO: 用绝对定位时正常，关闭绝对定位并开启paddingTop后出现问题
-export const VirtualList: FC<VirtualListProps> = ({
+const VirtualList: FC<VirtualListProps> = ({
   height,
   itemSize,
   renderItem,
@@ -75,3 +75,5 @@ export const VirtualList: FC<VirtualListProps> = ({
     </div>
   )
 }
+
+export default VirtualList
