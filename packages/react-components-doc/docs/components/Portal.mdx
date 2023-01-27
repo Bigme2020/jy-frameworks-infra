@@ -1,0 +1,64 @@
+---
+sidebar_label: Portal
+---
+
+import PropertyTable from "@site/src/components/PropertyTable";
+
+该组件封装了 createPortal，它可以在不改变元素代码位置的同时将任何传入的元素传送至指定层级
+
+:::info
+在同一层级下最多生成一个 portal 容器
+:::
+
+:::caution
+目前 portal 卸载后 portal 容器不会被自动清除，将在未来版本支持
+:::
+
+## 示例
+
+例：以下组件会在 root 根元素下渲染
+
+```tsx
+import { Portal } from "react-components";
+
+const RenderAtRoot = () => {
+  return (
+    <>
+      <div>123</div>
+      <Portal>
+        <div>456</div>
+      </Portal> {/* 等同于 <Portal container={document.body}>456</Portal> */}
+    </>
+  );
+};
+```
+
+这是 DOM 层级表现
+
+```
+document.body
+  #root
+    <div>123</div>
+  <div></div> (portal生成容器)
+    <div>456</div>
+```
+
+## 属性
+
+export const data = [
+  {
+    key: "children",
+    propName: "children",
+    type: "React.ReactElement | HTMLElement",
+    desc: "用于被portal传送至指定位置的元素",
+  },
+  {
+    key: "container",
+    propName: "container",
+    type: "HTMLElement",
+    desc: "用于指定portal挂载的位置",
+    defaultValue: "document.body",
+  },
+];
+
+<PropertyTable data={data}></PropertyTable>

@@ -19,5 +19,5 @@
     "noEmit": true, // 不生成编译后的js文件
     "removeComments": true // 删除注释
   },
-  "exclude": ["node_modules", "lib", "es", "react18-dev-test"]
+  "exclude": ["node_modules", "lib", "es", "react18-dev-test", "react-components-doc"]
 }
