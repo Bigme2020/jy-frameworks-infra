@@ -7,7 +7,7 @@
     "moduleResolution": "node", // node为typescript社区中最常用的，推荐用于大多数项目
     "esModuleInterop": true, // 改变ts对于import的转译规则，会自动在非esm导出的第三方库上定义default来导出，babel默认的转译规则与此方法相差无几 https://zhuanlan.zhihu.com/p/148081795
     "experimentalDecorators": true,
-    "jsx": "react", // 设置为react后，自动将jsx/tsx文件的jsx片段转换成React.createElement；不能设置成react-jsx后，虽然写组件时不用导入React也无需继续指定jsxFactory与jsxFragment，但会污染esm打包文件！ https://www.typescriptlang.org/docs/handbook/jsx.html
+    "jsx": "react", // 设置为react后，自动将jsx/tsx文件的jsx片段转换成React.createElement；不能设置成react-jsx，虽然写组件时不用导入React也无需继续指定jsxFactory与jsxFragment，但会污染esm打包文件！ https://www.typescriptlang.org/docs/handbook/jsx.html
     "jsxFactory": "React.createElement",
     "jsxFragmentFactory": "React.Fragment",
     "noUnusedParameters": true,
@@ -19,5 +19,5 @@
     "noEmit": true, // 不生成编译后的js文件
     "removeComments": true // 删除注释
   },
-  "exclude": ["node_modules", "lib", "es", "react18-dev-test", "react-components-doc"]
+  "exclude": ["node_modules", "lib", "es", "react18-dev-test", "packages/react-components-doc"]
 }
