@@ -1,4 +1,4 @@
 node_modules/
-react18-dev-test/
+dev-test-packages/
 packages/*/es/
 packages/*/lib/

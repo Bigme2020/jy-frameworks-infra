@@ -1,0 +1,31 @@
+{
+  "name": "vue-components",
+  "version": "0.0.0",
+  "description": "vue3 components",
+  "keywords": [
+    "vue3",
+    "components"
+  ],
+  "author": "Bigme2020 <2606249370@qq.com>",
+  "homepage": "https://github.com/Bigme2020/my-components#readme",
+  "license": "ISC",
+  "main": "lib/index.js",
+  "module": "es/index.js",
+  "types": "es/index.d.ts",
+  "publishConfig": {
+    "registry": "https://packages.aliyun.com/62b97b53e4166464dc3119ef/npm/npm-registry/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bigme2020/my-components.git"
+  },
+  "scripts": {
+    "test": ""
+  },
+  "bugs": {
+    "url": "https://github.com/Bigme2020/my-components/issues"
+  },
+  "dependencies": {
+    "vue": "^3.2.47"
+  }
+}

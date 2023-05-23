@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-pnpm -F react-components test
+pnpm -F react-components lint-staged
+pnpm -F vue-components lint-staged

@@ -18,7 +18,7 @@ export interface VirtualListProps {
   ) => ReactElement | HTMLElement
 }
 
-// TODO: 用绝对定位时正常，关闭绝对定位并开启paddingTop后出现问题
+// FIXME: 用绝对定位时正常，关闭绝对定位并开启paddingTop后出现问题
 const VirtualList: FC<VirtualListProps> = ({
   height,
   itemSize,

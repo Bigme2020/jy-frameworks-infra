@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 
 export interface PortalProps {
   container?: HTMLElement
-  children: HTMLElement | ReactElement
+  children: ReactNode
 }
 
 // 存放容器与其portal容器的对应map：一个容器下至多一个portal容器

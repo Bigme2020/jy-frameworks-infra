@@ -13,11 +13,26 @@
     "noUnusedParameters": true,
     "noUnusedLocals": true,
     "noImplicitAny": true,
-    "lib": ["dom", "es2017"],
+    "lib": ["dom", "es2020"],
     "skipLibCheck": true,
     "stripInternal": true,
     "noEmit": true, // 不生成编译后的js文件
-    "removeComments": true // 删除注释
+    "removeComments": true, // 删除注释
+    "allowSyntheticDefaultImports": true,
+    "plugins": [
+      {
+        "name": "typescript-plugin-css-modules", // 为.css结尾文件提供module.css识别能力
+        "options": {
+          "customMatcher": ".css$"
+        }
+      }
+    ]
   },
-  "exclude": ["node_modules", "lib", "es", "react18-dev-test", "packages/react-components-doc"]
+  "exclude": [
+    "node_modules",
+    "lib",
+    "es",
+    "dev-test-packages",
+    "packages/react-components-doc"
+  ]
 }
