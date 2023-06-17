@@ -47,25 +47,35 @@ const buildAll = () => {
   };
 };
 
-// const buildDts = () => {
-//   return {
-//     input: path.join(rootDir, "./src/index.ts"),
-//     output: [
-//       {
-//         file: path.join(rootDir, "./lib/index.d.ts"),
-//         format: "esm",
-//       },
-//       {
-//         file: path.join(rootDir, "./es/index.d.ts"),
-//         format: "esm",
-//       },
-//     ],
-//     plugins: [dts()],
-//   };
-// };
+const buildDts = () => {
+  return {
+    input: path.join(rootDir, "./src/index.ts"),
+    output: [
+      {
+        file: path.join(rootDir, "./lib/index.d.ts"),
+        format: "esm",
+      },
+      {
+        file: path.join(rootDir, "./es/index.d.ts"),
+        format: "esm",
+      },
+    ],
+    // TODO: packages/vue-components/src/index.ts(2,10): error TS2305: Module '"vue"' has no exported member 'App'.
+    plugins: [
+      typescript2({
+        check: false, // TODO: 这里check会报错，需检查
+        tsconfig: path.join(rootDir, "./tsconfig.json"),
+      }),
+      vuePlugin({
+        target: "browser",
+      }),
+      dts(),
+    ],
+  };
+};
 
 const buildSeperate = () => {
   return {};
 };
 
-module.exports = [buildAll()];
+module.exports = [buildAll(), buildDts()];

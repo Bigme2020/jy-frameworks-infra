@@ -19,6 +19,7 @@
     "noEmit": true, // 不生成编译后的js文件
     "removeComments": true, // 删除注释
     "allowSyntheticDefaultImports": true,
+    // "preserveSymlinks": false,
     "plugins": [
       {
         "name": "typescript-plugin-css-modules", // 为.css结尾文件提供module.css识别能力
