@@ -1,6 +1,6 @@
 const packageJson = require("../packages/vue-components/package.json");
 const vuePlugin = require("rollup-plugin-vue"); // 使rollup能够解析vue模板
-const typescript2 = require("rollup-plugin-typescript2"); // 使rollup支持解析typescript，这里没用官方的@rollup/plugin-typescript是因为此插件不支持vue3Ts
+const typescript = require("@rollup/plugin-typescript"); // 使rollup支持解析typescript
 const commonjs = require("@rollup/plugin-commonjs"); // 使rollup支持解析commonjs
 const postcss = require("rollup-plugin-postcss"); // （已安装postcss）用于无缝衔接rollup与postcss
 const postcssPresetEnv = require("postcss-preset-env");
@@ -26,8 +26,7 @@ const buildAll = () => {
     ],
     plugins: [
       commonjs(),
-      typescript2({
-        check: false, // TODO: 这里check会报错，需检查
+      typescript({
         tsconfig: path.join(rootDir, "./tsconfig.json"),
       }),
       vuePlugin({
@@ -38,7 +37,7 @@ const buildAll = () => {
       }),
       babel({
         babelHelpers: "bundled",
-        presets: ["@babel/preset-env"],
+        presets: ["@babel/preset-env", "@babel/preset-typescript"],
         exclude: "node_modules/**",
         extensions: [".js", ".ts", ".vue"],
       }),
@@ -62,14 +61,11 @@ const buildDts = () => {
     ],
     // TODO: packages/vue-components/src/index.ts(2,10): error TS2305: Module '"vue"' has no exported member 'App'.
     plugins: [
-      typescript2({
-        check: false, // TODO: 这里check会报错，需检查
-        tsconfig: path.join(rootDir, "./tsconfig.json"),
+      dts({
+        compilerOptions: {
+          preserveSymlinks: false,
+        },
       }),
-      vuePlugin({
-        target: "browser",
-      }),
-      dts(),
     ],
   };
 };

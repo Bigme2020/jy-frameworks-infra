@@ -27,5 +27,8 @@
   },
   "dependencies": {
     "vue": "^3.2.47"
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.22.5"
   }
 }

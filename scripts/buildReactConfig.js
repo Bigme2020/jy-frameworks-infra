@@ -4,7 +4,7 @@ const fs = require("fs");
 // rollup插件
 const nodeResolve = require("@rollup/plugin-node-resolve"); // 定位第三方包（当需要将第三方包打包进bundle时才需要用到，目前所有第三方包都视为external，所以不需要此插件）
 const typescript = require("@rollup/plugin-typescript"); // 使rollup支持解析typescript
-const typescript2 = require("rollup-plugin-typescript2"); // 使rollup支持解析typescript
+// const typescript2 = require("rollup-plugin-typescript2"); // 使rollup支持解析typescript
 const commonjs = require("@rollup/plugin-commonjs"); // 使rollup支持解析commonjs
 const dts = require("rollup-plugin-dts").default; // 生成dts文件
 const postcss = require("rollup-plugin-postcss"); // （已安装postcss）用于无缝衔接rollup与postcss
@@ -20,10 +20,7 @@ const commonConfig = {
       modules: true,
       plugins: [postcssPresetEnv()],
     }),
-    // typescript({
-    //   tsconfig: path.join(rootDir, "./tsconfig.json"),
-    // }),
-    typescript2({
+    typescript({
       tsconfig: path.join(rootDir, "./tsconfig.json"),
     }),
     commonjs(),
@@ -101,5 +98,3 @@ const buildSeperate = () => {
 };
 
 module.exports = [...buildAll(), ...buildSeperate(), buildDts()];
-// const buildConfig = [...buildAll(), ...buildSeperate(), buildDts()];
-// export default buildConfig;
