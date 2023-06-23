@@ -112,6 +112,7 @@ const VirtualList: FC<VirtualListProps> = ({
         if (scrollTop > top + height || scrollTop + wrapperHeight < top)
           continue
         const style: CSSProperties = {
+          boxSizing: 'border-box',
           position: 'absolute',
           height: `${height}px`,
           top: `${top}px`,
@@ -137,10 +138,12 @@ const VirtualList: FC<VirtualListProps> = ({
           rowHeights[i] = itemHeightMap[i] + spaceY
         }
         const style: CSSProperties = {
+          boxSizing: 'border-box',
           position: 'absolute',
           left: `${left}px`,
           top: `${top}px`,
           width: `${widthPerColumn}px`,
+          height: `${itemHeightMap[i]}px`,
         }
         // 没在可视区中，下一个
         if (
@@ -261,14 +264,21 @@ const VirtualList: FC<VirtualListProps> = ({
       <div
         ref={adaptiveLayoutRef}
         style={{
+          position: 'relative',
           display: 'flex',
           width: width ? `${width}px` : '100%',
           height: height ? `${height}px` : '100%',
-          overflow: 'overlay',
+          overflow: 'auto',
         }}
         onScroll={onScroll}
       >
-        <div style={{ position: 'relative', height: `${contentHeight}px` }}>
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: `${contentHeight}px`,
+          }}
+        >
           <>{renderData}</>
         </div>
       </div>
