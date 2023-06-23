@@ -8,8 +8,13 @@ import React, {
   CSSProperties,
   useEffect,
   useRef,
+  ReactNode,
 } from 'react'
-import { findIndexOfMinValue } from '../../utils'
+import {
+  findIndexOfMaxValue,
+  findIndexOfMinValue,
+  getScrollBarWidth,
+} from '../../utils'
 
 export interface VirtualListProps {
   width?: number
@@ -22,10 +27,7 @@ export interface VirtualListProps {
   spaceX?: number
   spaceY?: number
   data: Array<any>
-  renderItem: (
-    index: number,
-    style: CSSProperties
-  ) => ReactElement | HTMLElement
+  renderItem: (index: number, style: CSSProperties) => ReactNode
 }
 
 // FIXME: 用绝对定位时正常，关闭绝对定位并开启paddingTop后出现问题
@@ -40,20 +42,25 @@ const VirtualList: FC<VirtualListProps> = ({
   data,
 }): ReactElement => {
   const [scrollTop, setScrollTop] = useState(0)
-  const [startIndex, setStartIndex] = useState(0)
+  // 容器宽高取wrapperWidth和wrapperHeight, height和width只是外部传入
   const [wrapperHeight, setWrapperHeight] = useState(0)
   const [wrapperWidth, setWrapperWidth] = useState(0)
-  const [styleData, setStyleData] = useState<CSSProperties[]>([])
+  // renderData 用于表示当前需要渲染的列表
+  const [renderData, setRenderData] = useState<ReactNode[]>([])
+  // itemHeightMap 记录了所有item的高度 key为item索引 value为item高度
   const [itemHeightMap, setItemHeightMap] = useState<
     Record<string | number, number>
   >({})
 
-  const rowHeights = useRef<number[]>([])
-  const recordedRow = useRef<number>(-1)
+  const scrollBarWidth = useRef(0)
 
   const widthPerColumn = useMemo(
-    () => (column ? wrapperWidth / column : wrapperWidth),
-    [wrapperWidth, column]
+    () =>
+      column
+        ? (wrapperWidth - (column - 1) * spaceX - scrollBarWidth.current) /
+          column
+        : wrapperWidth,
+    [wrapperWidth, column, spaceX, scrollBarWidth.current]
   )
 
   // 用于实现 width,height 未传时，组件自身的宽高自适应
@@ -71,42 +78,27 @@ const VirtualList: FC<VirtualListProps> = ({
         return pre + itemHeightMap[index]
       }, 0)
     } else {
-      const rows = Math.ceil(itemCount / column)
-      if (typeof itemHeight === 'number') {
-        return rows * itemHeight
-      }
-      let _contentHeight = 0
-      for (let i = 0; i < itemCount; i += column) {
-        let maxHeightOfRow = 0
-        for (let j = i; j < i + column - 1; j++) {
-          maxHeightOfRow = Math.max(
-            itemHeightMap[j] || 0,
-            itemHeightMap[j + 1] || 0
-          )
+      // TODO: 这里可以优化，无需重复计算
+      const rowHeights: number[] = []
+      for (let i = 0; i < itemCount; i++) {
+        if (rowHeights.length !== column) {
+          rowHeights[i] = 0
+        } else {
+          const leftIndex = findIndexOfMinValue(rowHeights, 0)
+          rowHeights[leftIndex] =
+            rowHeights[leftIndex] + itemHeightMap[i] + spaceY
         }
-        _contentHeight += maxHeightOfRow
       }
-      return _contentHeight
+      const maxValueIndex = findIndexOfMaxValue(rowHeights, 0)
+      return rowHeights[maxValueIndex]
     }
   }, [itemCount, itemHeight, itemHeightMap, column])
-  const endIndex = useMemo(
-    () => startIndex + wrapperHeight / itemHeight,
-    [startIndex, wrapperHeight]
-  )
 
-  const computeStyleData = useCallback(async () => {
+  const computeRenderData = () => {
     const arr = []
 
-    // for (let i = startIndex; i < endIndex; i++) {
-
-    //   const style = {
-    //     position: 'absolute',
-    //     height: `${itemHeight}px`,
-    //     top: `${itemHeight * i}px`,
-    //   }
-    //   arr.push(renderItem(i, style as CSSProperties))
-    // }
-    // return arr
+    // TODO: 这里可以优化，无需重复计算
+    const rowHeights: number[] = []
     for (let i = 0; i < itemCount; i++) {
       if (!column || column === 1) {
         const top =
@@ -115,69 +107,117 @@ const VirtualList: FC<VirtualListProps> = ({
             : new Array(i)
                 .fill(0)
                 .reduce((pre, _, index) => pre + itemHeightMap[index], 0)
+
         const height = itemHeightMap[i]
-        if (scrollTop > top + height || scrollTop + contentHeight < top) {
+        if (scrollTop > top + height || scrollTop + wrapperHeight < top)
           continue
-        }
-        const style = {
+        const style: CSSProperties = {
           position: 'absolute',
           height: `${height}px`,
           top: `${top}px`,
+          width: `${widthPerColumn}px`,
         }
-        arr.push(style)
+        arr.push(renderItem(i, style))
       } else {
-        const currentRow = Math.floor(i / column)
-        const indexOfCurrentRow = i % column
-
-        // TODO: ...
-        // if(scrollTop) {}
         let left = 0,
           top = 0
-        if (rowHeights.current.length === column) {
-          const leftIndex = findIndexOfMinValue(
-            rowHeights.current,
-            indexOfCurrentRow
-          )
-          left = leftIndex * widthPerColumn - leftIndex * spaceX
-          top = rowHeights.current[leftIndex]
+        const indexOfCurrentRow = i % column
+
+        if (rowHeights.length === column) {
+          // 当rowHeights长度和column一样，说明已经不是第一行了，需要动态设置top值
+          const leftIndex = findIndexOfMinValue(rowHeights, 0)
+          left = leftIndex * widthPerColumn + leftIndex * spaceX
+          top = rowHeights[leftIndex]
+          rowHeights[leftIndex] =
+            rowHeights[leftIndex] + itemHeightMap[i] + spaceY
         } else {
-          left = indexOfCurrentRow * widthPerColumn - indexOfCurrentRow * spaceX
+          // 当rowHeights长度和column不一样，说明时第一行，top直接0
+          left = indexOfCurrentRow * widthPerColumn + indexOfCurrentRow * spaceX
           top = 0
+          rowHeights[i] = itemHeightMap[i] + spaceY
         }
-        // TODO: continue
-        const style = {
+        const style: CSSProperties = {
           position: 'absolute',
           left: `${left}px`,
           top: `${top}px`,
+          width: `${widthPerColumn}px`,
         }
-        if (currentRow >= recordedRow.current) {
-          recordedRow.current = currentRow
-          // 记录当前行每个元素的高度对应的横轴索引
-          if (rowHeights.current.length === column) {
-            const leftIndex = findIndexOfMinValue(
-              rowHeights.current,
-              indexOfCurrentRow
-            )
-            const itemHeight = itemHeightMap[i]
-            rowHeights.current[leftIndex] =
-              rowHeights.current[leftIndex] + itemHeight
-          } else {
-            rowHeights.current[i] = itemHeightMap[i] + spaceY
-          }
-        }
-        arr.push()
+        // 没在可视区中，下一个
+        if (
+          top > scrollTop + wrapperHeight ||
+          top + itemHeightMap[i] < scrollTop
+        )
+          continue
+        // 在可视区中，推入
+        arr.push(renderItem(i, style))
       }
     }
 
-    setStyleData(arr)
+    setRenderData(arr)
+  }
+
+  const onScroll = useCallback((e: UIEvent) => {
+    const scrollTop = e.currentTarget.scrollTop
+    setScrollTop(scrollTop)
+  }, [])
+
+  const reset = useCallback(() => {
+    setItemHeightMap({})
+  }, [])
+
+  // 计算动态的 itemHeight
+  const computeItemHeight = () => {
+    for (let i = 0; i < itemCount; i++) {
+      if (itemHeightMap[i]) continue
+      if (typeof itemHeight === 'function') {
+        console.log(itemHeight.constructor.name)
+
+        if (itemHeight.constructor.name === 'AsyncFunction') {
+          // async标记的函数
+          ;(itemHeight(i) as Promise<number>).then((_itemHeight) => {
+            console.log('异步计算获得', _itemHeight)
+            setItemHeightMap((_itemHeightMap) => ({
+              ..._itemHeightMap,
+              [i]: _itemHeight,
+            }))
+          })
+        } else {
+          const heightRes = itemHeight(i)
+          if (heightRes instanceof Promise) {
+            ;(itemHeight(i) as Promise<number>).then((_itemHeight) => {
+              console.log('异步计算获得', _itemHeight)
+              setItemHeightMap((_itemHeightMap) => ({
+                ..._itemHeightMap,
+                [i]: _itemHeight,
+              }))
+            })
+          }
+          console.log('同步计算获得', itemHeight(i))
+          setItemHeightMap((_itemHeightMap) => ({
+            ..._itemHeightMap,
+            [i]: heightRes as number,
+          }))
+        }
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (data.length === 0) {
+      reset()
+    } else {
+      computeItemHeight()
+    }
+  }, [data, itemHeight, itemCount])
+
+  useEffect(() => {
+    computeRenderData()
   }, [
     data,
-    contentHeight,
+    wrapperHeight,
     itemHeightMap,
     widthPerColumn,
     itemCount,
-    startIndex,
-    endIndex,
     spaceX,
     spaceY,
     scrollTop,
@@ -199,10 +239,14 @@ const VirtualList: FC<VirtualListProps> = ({
         setWrapperWidth(adaptiveLayoutRef.current.offsetWidth)
       }
     }
-
     const adapt = () => {
       adaptHeight()
       adaptWidth()
+    }
+
+    adapt()
+    if (!scrollBarWidth.current) {
+      scrollBarWidth.current = getScrollBarWidth()
     }
 
     window.addEventListener('resize', adapt)
@@ -212,75 +256,22 @@ const VirtualList: FC<VirtualListProps> = ({
     }
   }, [])
 
-  const onScroll = useCallback((e: UIEvent) => {
-    const scrollTop = e.currentTarget.scrollTop
-    setStartIndex(Math.floor(scrollTop / itemHeight))
-    setScrollTop(scrollTop)
-  }, [])
-
-  const renderData = useCallback(
-    () => styleData.map((style, index) => renderItem(index, style)),
-    [styleData, renderItem]
-  )
-
-  const reset = () => {
-    console.log('reset')
-    setItemHeightMap({})
-  }
-
-  useEffect(() => {
-    // 计算动态的 itemHeight
-    for (let i = 0; i < itemCount; i++) {
-      if (itemHeightMap[i]) continue
-      if (typeof itemHeight === 'function') {
-        if (itemHeight.constructor.name === 'AsyncFunction') {
-          ;(itemHeight(i) as Promise<number>).then((_itemHeight) => {
-            setItemHeightMap({
-              ...itemHeightMap,
-              [i]: _itemHeight,
-            })
-          })
-        } else {
-          setItemHeightMap({
-            ...itemHeightMap,
-            [i]: itemHeight(i) as number,
-          })
-        }
-      }
-    }
-  }, [data, itemHeight, itemCount])
-
-  useEffect(() => {
-    computeStyleData()
-  }, [computeStyleData])
-
-  useEffect(() => {
-    if (data.length === 0) {
-      reset()
-    }
-  }, [data])
-
   return (
     <>
       <div
+        ref={adaptiveLayoutRef}
         style={{
           display: 'flex',
-          width: `${wrapperWidth}px`,
-          height: `${wrapperHeight}px`,
-          overflow: 'auto',
+          width: width ? `${width}px` : '100%',
+          height: height ? `${height}px` : '100%',
+          overflow: 'overlay',
         }}
         onScroll={onScroll}
       >
         <div style={{ position: 'relative', height: `${contentHeight}px` }}>
-          <>{renderData()}</>
+          <>{renderData}</>
         </div>
       </div>
-      {!height || !width ? (
-        <div
-          ref={adaptiveLayoutRef}
-          style={{ width: '100%', height: '100%' }}
-        />
-      ) : null}
     </>
   )
 }
