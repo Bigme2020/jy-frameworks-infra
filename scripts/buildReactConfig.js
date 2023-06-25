@@ -72,6 +72,7 @@ const buildDts = () => {
   };
 };
 
+// TODO: hooks和components待区分打包，并且hooks待分包
 // 分包
 const buildSeperate = () => {
   const seperateBuildConfig = [];

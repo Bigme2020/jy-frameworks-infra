@@ -1,3 +1,4 @@
+// components
 export { default as Tooltip } from './components/Tooltip'
 export type { TooltipProps, Placement } from './components/Tooltip'
 export { default as Portal } from './components/Portal'
@@ -12,3 +13,6 @@ export type {
   MvlConfigItem,
 } from './components/MultipleVirtualList'
 export { default as TestComp } from './components/TestComp'
+
+// hooks
+export * from './hooks'

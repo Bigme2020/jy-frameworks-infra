@@ -15,6 +15,7 @@ import {
   findIndexOfMinValue,
   getScrollBarWidth,
 } from '../../utils'
+import { useThrottle } from '../../hooks'
 
 export interface VirtualListProps {
   width?: number
@@ -28,10 +29,11 @@ export interface VirtualListProps {
   spaceY?: number
   data: Array<any>
   renderItem: (index: number, style: CSSProperties) => ReactNode
+  onEnd?: () => void
 }
 
-// FIXME: 用绝对定位时正常，关闭绝对定位并开启paddingTop后出现问题
 const VirtualList: FC<VirtualListProps> = ({
+  data,
   width,
   height,
   itemHeight,
@@ -39,7 +41,7 @@ const VirtualList: FC<VirtualListProps> = ({
   spaceX = 20,
   spaceY = 20,
   renderItem,
-  data,
+  onEnd,
 }): ReactElement => {
   const [scrollTop, setScrollTop] = useState(0)
   // 容器宽高取wrapperWidth和wrapperHeight, height和width只是外部传入
@@ -51,6 +53,8 @@ const VirtualList: FC<VirtualListProps> = ({
   const [itemHeightMap, setItemHeightMap] = useState<
     Record<string | number, number>
   >({})
+  // lastColumn 用来记录上次的column，来监听column是否变化
+  const lastColumn = useRef(column)
 
   const scrollBarWidth = useRef(0)
 
@@ -68,6 +72,33 @@ const VirtualList: FC<VirtualListProps> = ({
 
   const itemCount = useMemo(() => data.length, [data])
 
+  const getFullRowHeights = useCallback(() => {
+    // TODO: 这里可以优化，无需重复计算
+    const rowHeights: number[] = []
+    for (let i = 0; i < itemCount; i++) {
+      if (rowHeights.length !== column) {
+        rowHeights[i] = 0
+      } else {
+        const leftIndex = findIndexOfMinValue(rowHeights, 0)
+        rowHeights[leftIndex] =
+          rowHeights[leftIndex] + itemHeightMap[i] + spaceY
+      }
+    }
+    return rowHeights
+  }, [column, itemCount, itemHeightMap, spaceY])
+
+  const listenScrollEnd = useThrottle((rowHeights: number[]) => {
+    const minHeightIndex = findIndexOfMinValue(rowHeights, 0)
+    const minHeight = rowHeights[minHeightIndex]
+
+    if (
+      scrollTop + wrapperHeight + 300 > minHeight &&
+      typeof onEnd === 'function'
+    ) {
+      onEnd()
+    }
+  })
+
   // 内容高度
   const contentHeight = useMemo<number>(() => {
     if (!column || column === 1) {
@@ -78,21 +109,12 @@ const VirtualList: FC<VirtualListProps> = ({
         return pre + itemHeightMap[index]
       }, 0)
     } else {
-      // TODO: 这里可以优化，无需重复计算
-      const rowHeights: number[] = []
-      for (let i = 0; i < itemCount; i++) {
-        if (rowHeights.length !== column) {
-          rowHeights[i] = 0
-        } else {
-          const leftIndex = findIndexOfMinValue(rowHeights, 0)
-          rowHeights[leftIndex] =
-            rowHeights[leftIndex] + itemHeightMap[i] + spaceY
-        }
-      }
+      const rowHeights = getFullRowHeights()
       const maxValueIndex = findIndexOfMaxValue(rowHeights, 0)
+
       return rowHeights[maxValueIndex]
     }
-  }, [itemCount, itemHeight, itemHeightMap, column])
+  }, [itemCount, itemHeight, itemHeightMap, column, getFullRowHeights])
 
   const computeRenderData = () => {
     const arr = []
@@ -137,7 +159,18 @@ const VirtualList: FC<VirtualListProps> = ({
           top = 0
           rowHeights[i] = itemHeightMap[i] + spaceY
         }
+
+        let isTransition = false
+        if (lastColumn.current !== column) {
+          isTransition = true
+          // setTimeout是为了防止100ms动画都还没加载好就开始滚动，导致下一次执行这个函数时transition=false，动画消失
+          setTimeout(() => {
+            lastColumn.current = column
+          }, 100) // 实测动画时间100ms正正好好，能避免 改变行数执行动画时马上滚动导致动画时长过长而滚动也出现动画
+        }
+
         const style: CSSProperties = {
+          transition: isTransition ? 'left 0.1s linear' : '',
           boxSizing: 'border-box',
           position: 'absolute',
           left: `${left}px`,
@@ -156,6 +189,10 @@ const VirtualList: FC<VirtualListProps> = ({
       }
     }
 
+    // 监听是否触底
+    listenScrollEnd(rowHeights)
+
+    // 设置虚拟列表
     setRenderData(arr)
   }
 
@@ -173,8 +210,6 @@ const VirtualList: FC<VirtualListProps> = ({
     for (let i = 0; i < itemCount; i++) {
       if (itemHeightMap[i]) continue
       if (typeof itemHeight === 'function') {
-        console.log(itemHeight.constructor.name)
-
         if (itemHeight.constructor.name === 'AsyncFunction') {
           // async标记的函数
           ;(itemHeight(i) as Promise<number>).then((_itemHeight) => {
