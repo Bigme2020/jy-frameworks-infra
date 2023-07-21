@@ -1,10 +1,11 @@
 {
-  "name": "vue-components",
+  "name": "vue-infra",
   "version": "0.0.0",
   "description": "vue3 components",
   "keywords": [
     "vue3",
-    "components"
+    "components",
+    "hooks"
   ],
   "author": "Bigme2020 <2606249370@qq.com>",
   "homepage": "https://github.com/Bigme2020/my-components#readme",

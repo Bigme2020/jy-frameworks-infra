@@ -1,8 +1,13 @@
 {
-  "name": "react-components",
+  "name": "react-infra",
   "version": "0.0.0",
-  "description": "react18 components",
+  "description": "react18 infrastructure",
   "author": "Bigme2020 <2606249370@qq.com>",
+  "keywords": [
+    "react18",
+    "components",
+    "hooks"
+  ],
   "homepage": "",
   "license": "ISC",
   "types": "es/index.d.ts",
