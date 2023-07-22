@@ -12,7 +12,6 @@ export type {
   MvlConfig,
   MvlConfigItem,
 } from './components/MultipleVirtualList'
-export { default as TestComp } from './components/TestComp'
 
 // hooks
 export * from './hooks'

@@ -14,7 +14,7 @@ import {
   findIndexOfMaxValue,
   findIndexOfMinValue,
   getScrollBarWidth,
-} from '../../utils'
+} from './utils'
 import { useThrottle } from '../../hooks'
 
 export interface VirtualListProps {
@@ -119,7 +119,7 @@ const VirtualList: FC<VirtualListProps> = ({
   const computeRenderData = () => {
     const arr = []
 
-    // TODO: 这里可以优化，无需重复计算
+    // TODO: 这里可以优化，当只有滚动而页面大小没有变化时之前计算过的无需重复计算
     const rowHeights: number[] = []
     for (let i = 0; i < itemCount; i++) {
       if (!column || column === 1) {
