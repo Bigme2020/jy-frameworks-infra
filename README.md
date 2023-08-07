@@ -11,12 +11,13 @@
 
 ## 目录结构
 jy-frameworks-infra
+```
 |-- .husky // git提交前检查
 |-- packages // monorepo仓库
 |   |-- jy-react-infra
 |   └── jy-vue-infra
 |-- scripts // 脚本
-
+```
 
 ## 命令指引 
 这个仓库是 lerna + pnpm + rollup 的 monorepo 仓库，一些 lerna 原本的命令 bootstrap、link、add 等命令被 pnpm 命令替代（详情见官网：https://lerna.js.org/docs/recipes/using-pnpm-with-lerna）
