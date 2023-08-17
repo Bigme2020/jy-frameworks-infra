@@ -33,7 +33,7 @@ export const getScrollBarWidth = () => {
     clientWidth,
   })
 
-  return offsetWidth - clientWidth
+  return offsetWidth - clientWidth || 0
 }
 
 export const parsePadding = (
