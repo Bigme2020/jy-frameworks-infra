@@ -10,29 +10,49 @@ import React, {
   useRef,
   ReactNode,
 } from 'react'
+
 import {
   findIndexOfMaxValue,
   findIndexOfMinValue,
   getScrollBarWidth,
+  parsePadding,
 } from './utils'
 import { useThrottle } from '../../hooks'
 
-export interface VirtualListProps {
-  width?: number
-  height?: number
+interface WaterfallProps {
+  data: Array<any>
   itemHeight:
     | number
     | ((index: number) => number)
     | ((index: number) => Promise<number>)
+  width?: number
+  height?: number
   column?: number
   spaceX?: number
   spaceY?: number
-  data: Array<any>
+  endOffset?: number
+  padding?: string
+  unit?: string
   renderItem: (index: number, style: CSSProperties) => ReactNode
   onEnd?: () => void
 }
 
-const VirtualList: FC<VirtualListProps> = ({
+/**
+ * @param data 必填 列表
+ * @param itemHeight 必填 支持同步和异步
+ * @param padding 可选 默认0
+ * @param column 可选 默认1
+ * @param width 可选 默认撑满父容器宽度
+ * @param height 可选 默认撑满父容器高度
+ * @param spaceX 可选 默认20 横坐标 物体之间的 间隔
+ * @param spaceY 可选 默认20 纵坐标 物体之间的 间隔
+ * @param endOffset 可选 默认150 触发 onEnd 时的 向上偏移量
+ * @param padding 可选 内边距 注意！计量单位必须和unit相同！若计量单位不为px，则需要手动设置unit参数！
+ * @param unit 可选 默认px
+ * @param renderItem 必填 回调中的 style 必须设置到 item 上
+ * @param onEnd 可选 触底事件
+ */
+export const Waterfall: FC<WaterfallProps> = ({
   data,
   width,
   height,
@@ -40,9 +60,13 @@ const VirtualList: FC<VirtualListProps> = ({
   column,
   spaceX = 20,
   spaceY = 20,
+  endOffset = 150,
+  padding = '',
+  unit = 'px',
   renderItem,
   onEnd,
 }): ReactElement => {
+  // 自带容器滚动高度
   const [scrollTop, setScrollTop] = useState(0)
   // 容器宽高取wrapperWidth和wrapperHeight, height和width只是外部传入
   const [wrapperHeight, setWrapperHeight] = useState(0)
@@ -53,6 +77,13 @@ const VirtualList: FC<VirtualListProps> = ({
   const [itemHeightMap, setItemHeightMap] = useState<
     Record<string | number, number>
   >({})
+
+  // padding解析
+  const paddingInfo = useMemo(
+    () => parsePadding(padding, unit),
+    [padding, unit]
+  )
+
   // lastColumn 用来记录上次的column，来监听column是否变化
   const lastColumn = useRef(column)
 
@@ -61,10 +92,14 @@ const VirtualList: FC<VirtualListProps> = ({
   const widthPerColumn = useMemo(
     () =>
       column
-        ? (wrapperWidth - (column - 1) * spaceX - scrollBarWidth.current) /
+        ? (wrapperWidth -
+            paddingInfo.paddingLeft -
+            paddingInfo.paddingRight -
+            (column - 1) * spaceX -
+            scrollBarWidth.current) /
           column
-        : wrapperWidth,
-    [wrapperWidth, column, spaceX, scrollBarWidth.current]
+        : wrapperWidth - paddingInfo.paddingLeft - paddingInfo.paddingRight,
+    [wrapperWidth, column, spaceX, scrollBarWidth.current, paddingInfo]
   )
 
   // 用于实现 width,height 未传时，组件自身的宽高自适应
@@ -73,18 +108,21 @@ const VirtualList: FC<VirtualListProps> = ({
   const itemCount = useMemo(() => data.length, [data])
 
   const getFullRowHeights = useCallback(() => {
-    // TODO: 这里可以优化，无需重复计算
     const rowHeights: number[] = []
     for (let i = 0; i < itemCount; i++) {
       if (rowHeights.length !== column) {
+        // 长度不相等时说明数组刚刚初始化出来，先赋值个0
         rowHeights[i] = 0
+        rowHeights[i] = itemHeightMap[i] + spaceY
       } else {
         const leftIndex = findIndexOfMinValue(rowHeights, 0)
+        if (leftIndex === -1) return []
         rowHeights[leftIndex] =
-          rowHeights[leftIndex] + itemHeightMap[i] + spaceY
+          Number(rowHeights[leftIndex]) + Number(itemHeightMap[i]) + spaceY
       }
     }
-    return rowHeights
+    // spaceY是两元素间的距离，上面没有记录行数虽然方便了计算但是会导致最后多算一行spaceY，需要在最后的结果中减掉
+    return rowHeights.map((h) => h - spaceY)
   }, [column, itemCount, itemHeightMap, spaceY])
 
   const listenScrollEnd = useThrottle((rowHeights: number[]) => {
@@ -92,12 +130,12 @@ const VirtualList: FC<VirtualListProps> = ({
     const minHeight = rowHeights[minHeightIndex]
 
     if (
-      scrollTop + wrapperHeight + 300 > minHeight &&
+      scrollTop + wrapperHeight + endOffset >= Number(minHeight) &&
       typeof onEnd === 'function'
     ) {
       onEnd()
     }
-  })
+  }, 25)
 
   // 内容高度
   const contentHeight = useMemo<number>(() => {
@@ -106,7 +144,11 @@ const VirtualList: FC<VirtualListProps> = ({
         return itemCount * itemHeight
       }
       return new Array(itemCount).fill(0).reduce((pre, _, index) => {
-        return pre + itemHeightMap[index]
+        return pre +
+          itemHeightMap[index] +
+          (index === 0 || index === itemCount - 1)
+          ? 0
+          : spaceY
       }, 0)
     } else {
       const rowHeights = getFullRowHeights()
@@ -114,12 +156,20 @@ const VirtualList: FC<VirtualListProps> = ({
 
       return rowHeights[maxValueIndex]
     }
-  }, [itemCount, itemHeight, itemHeightMap, column, getFullRowHeights])
+  }, [
+    itemCount,
+    itemHeight,
+    itemHeightMap,
+    column,
+    spaceY,
+    getFullRowHeights,
+    paddingInfo,
+  ])
 
   const computeRenderData = () => {
     const arr = []
 
-    // TODO: 这里可以优化，当只有滚动而页面大小没有变化时之前计算过的无需重复计算
+    // TODO: 这里可以优化，无需重复计算？
     const rowHeights: number[] = []
     for (let i = 0; i < itemCount; i++) {
       if (!column || column === 1) {
@@ -136,9 +186,9 @@ const VirtualList: FC<VirtualListProps> = ({
         const style: CSSProperties = {
           boxSizing: 'border-box',
           position: 'absolute',
-          height: `${height}px`,
-          top: `${top}px`,
-          width: `${widthPerColumn}px`,
+          height: `${height}${unit}`,
+          top: `${top}${unit}`,
+          width: `${widthPerColumn}${unit}`,
         }
         arr.push(renderItem(i, style))
       } else {
@@ -150,14 +200,14 @@ const VirtualList: FC<VirtualListProps> = ({
           // 当rowHeights长度和column一样，说明已经不是第一行了，需要动态设置top值
           const leftIndex = findIndexOfMinValue(rowHeights, 0)
           left = leftIndex * widthPerColumn + leftIndex * spaceX
-          top = rowHeights[leftIndex]
+          top = Number(rowHeights[leftIndex])
           rowHeights[leftIndex] =
-            rowHeights[leftIndex] + itemHeightMap[i] + spaceY
+            Number(rowHeights[leftIndex]) + Number(itemHeightMap[i]) + spaceY
         } else {
           // 当rowHeights长度和column不一样，说明时第一行，top直接0
           left = indexOfCurrentRow * widthPerColumn + indexOfCurrentRow * spaceX
           top = 0
-          rowHeights[i] = itemHeightMap[i] + spaceY
+          rowHeights[i] = Number(itemHeightMap[i]) + spaceY
         }
 
         let isTransition = false
@@ -173,15 +223,15 @@ const VirtualList: FC<VirtualListProps> = ({
           transition: isTransition ? 'left 0.1s linear' : '',
           boxSizing: 'border-box',
           position: 'absolute',
-          left: `${left}px`,
-          top: `${top}px`,
-          width: `${widthPerColumn}px`,
-          height: `${itemHeightMap[i]}px`,
+          left: `${left}${unit}`,
+          top: `${top}${unit}`,
+          width: `${widthPerColumn}${unit}`,
+          height: `${itemHeightMap[i]}${unit}`,
         }
         // 没在可视区中，下一个
         if (
           top > scrollTop + wrapperHeight ||
-          top + itemHeightMap[i] < scrollTop
+          top + Number(itemHeightMap[i]) < scrollTop
         )
           continue
         // 在可视区中，推入
@@ -205,15 +255,15 @@ const VirtualList: FC<VirtualListProps> = ({
     setItemHeightMap({})
   }, [])
 
-  // 计算动态的 itemHeight
+  // 计算每个元素的 itemHeight
   const computeItemHeight = () => {
     for (let i = 0; i < itemCount; i++) {
+      // 由于目前没有碰到 元素中途高度变更的情况，所以这里做了元素的高度缓存（即已渲染出来过的元素，其高度不会再次计算），避免重复计算
       if (itemHeightMap[i]) continue
       if (typeof itemHeight === 'function') {
         if (itemHeight.constructor.name === 'AsyncFunction') {
-          // async标记的函数
+          // async标记的函数: async () => {}
           ;(itemHeight(i) as Promise<number>).then((_itemHeight) => {
-            console.log('异步计算获得', _itemHeight)
             setItemHeightMap((_itemHeightMap) => ({
               ..._itemHeightMap,
               [i]: _itemHeight,
@@ -221,25 +271,32 @@ const VirtualList: FC<VirtualListProps> = ({
           })
         } else {
           const heightRes = itemHeight(i)
+          // 返回promise的函数
           if (heightRes instanceof Promise) {
             ;(itemHeight(i) as Promise<number>).then((_itemHeight) => {
-              console.log('异步计算获得', _itemHeight)
               setItemHeightMap((_itemHeightMap) => ({
                 ..._itemHeightMap,
                 [i]: _itemHeight,
               }))
             })
           }
-          console.log('同步计算获得', itemHeight(i))
+          // 返回number类型的函数
           setItemHeightMap((_itemHeightMap) => ({
             ..._itemHeightMap,
             [i]: heightRes as number,
           }))
         }
+      } else {
+        // number类型
+        setItemHeightMap((_itemHeightMap) => ({
+          ..._itemHeightMap,
+          [i]: itemHeight as number,
+        }))
       }
     }
   }
 
+  // 计算每个元素的高度
   useEffect(() => {
     if (data.length === 0) {
       reset()
@@ -248,6 +305,7 @@ const VirtualList: FC<VirtualListProps> = ({
     }
   }, [data, itemHeight, itemCount])
 
+  // 排列渲染触发
   useEffect(() => {
     computeRenderData()
   }, [
@@ -262,6 +320,7 @@ const VirtualList: FC<VirtualListProps> = ({
     renderItem,
   ])
 
+  // 初始化设置 (包含了 宽高计算 以及 scrollbar 宽度测量)
   useEffect(() => {
     const adaptHeight = () => {
       if (height) {
@@ -299,11 +358,13 @@ const VirtualList: FC<VirtualListProps> = ({
       <div
         ref={adaptiveLayoutRef}
         style={{
+          boxSizing: 'border-box',
           position: 'relative',
           display: 'flex',
-          width: width ? `${width}px` : '100%',
-          height: height ? `${height}px` : '100%',
+          width: width ? `${width}${unit}` : '100%',
+          height: height ? `${height}${unit}` : '100%',
           overflow: 'auto',
+          padding,
         }}
         onScroll={onScroll}
       >
@@ -311,7 +372,7 @@ const VirtualList: FC<VirtualListProps> = ({
           style={{
             position: 'relative',
             width: '100%',
-            height: `${contentHeight}px`,
+            height: `${contentHeight}${unit}`,
           }}
         >
           <>{renderData}</>
@@ -320,5 +381,3 @@ const VirtualList: FC<VirtualListProps> = ({
     </>
   )
 }
-
-export default VirtualList

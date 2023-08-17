@@ -35,3 +35,66 @@ export const getScrollBarWidth = () => {
 
   return offsetWidth - clientWidth
 }
+
+export const parsePadding = (
+  padding: string,
+  unit: string
+): {
+  paddingLeft: number
+  paddingRight: number
+  paddingTop: number
+  paddingBottom: number
+} => {
+  if (!padding)
+    return {
+      paddingLeft: 0,
+      paddingRight: 0,
+      paddingTop: 0,
+      paddingBottom: 0,
+    }
+  const paddingParams = padding.split(' ')
+  switch (paddingParams.length) {
+    case 1:
+      const p = Number(paddingParams[0].replace(unit, ''))
+      return {
+        paddingLeft: p,
+        paddingRight: p,
+        paddingTop: p,
+        paddingBottom: p,
+      }
+    case 2:
+      const ptb = Number(paddingParams[0].replace(unit, ''))
+      const plr = Number(paddingParams[1].replace(unit, ''))
+      return {
+        paddingLeft: plr,
+        paddingRight: plr,
+        paddingTop: ptb,
+        paddingBottom: ptb,
+      }
+    case 3:
+      const pt = Number(paddingParams[0].replace(unit, ''))
+      const _plr = Number(paddingParams[1].replace(unit, ''))
+      const pb = Number(paddingParams[2].replace(unit, ''))
+
+      return {
+        paddingLeft: _plr,
+        paddingRight: _plr,
+        paddingTop: pt,
+        paddingBottom: pb,
+      }
+    case 4:
+      return {
+        paddingLeft: Number(paddingParams[3].replace(unit, '')),
+        paddingRight: Number(paddingParams[1].replace(unit, '')),
+        paddingTop: Number(paddingParams[0].replace(unit, '')),
+        paddingBottom: Number(paddingParams[2].replace(unit, '')),
+      }
+    default:
+      return {
+        paddingLeft: 0,
+        paddingRight: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
+      }
+  }
+}
