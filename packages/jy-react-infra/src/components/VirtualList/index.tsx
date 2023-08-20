@@ -1,5 +1,4 @@
 import React, {
-  FC,
   ReactElement,
   useState,
   useMemo,
@@ -9,6 +8,8 @@ import React, {
   useEffect,
   useRef,
   ReactNode,
+  forwardRef,
+  useImperativeHandle,
 } from 'react'
 
 import {
@@ -19,12 +20,27 @@ import {
 } from './utils'
 import { useThrottle } from '../../hooks'
 
-interface WaterfallProps {
+type WindowScrollerProps = {
+  scrollerType: 'window'
+  offsetTop: number
+  scrollTop: number
+  windowHeight: number
+}
+
+type SelfScrollerProps = {
+  scrollerType?: 'self'
+  offsetTop?: number
+  scrollTop?: number
+  windowHeight?: number
+}
+
+type WaterfallProps = {
   data: Array<any>
   itemHeight:
     | number
     | ((index: number) => number)
     | ((index: number) => Promise<number>)
+  id?: string
   width?: number
   height?: number
   column?: number
@@ -35,11 +51,13 @@ interface WaterfallProps {
   unit?: string
   renderItem: (index: number, style: CSSProperties) => ReactNode
   onEnd?: () => void
-}
+} & (WindowScrollerProps | SelfScrollerProps)
 
+// TODO: scrollerType 待支持 custom : 提供自定义父元素
 /**
  * @param data 必填 列表
  * @param itemHeight 必填 支持同步和异步
+ * @param id 可选 将绑定至组件的最外层 dom 上
  * @param padding 可选 默认0
  * @param column 可选 默认1
  * @param width 可选 默认撑满父容器宽度
@@ -47,25 +65,41 @@ interface WaterfallProps {
  * @param spaceX 可选 默认20 横坐标 物体之间的 间隔
  * @param spaceY 可选 默认20 纵坐标 物体之间的 间隔
  * @param endOffset 可选 默认150 触发 onEnd 时的 向上偏移量
- * @param padding 可选 内边距 注意！计量单位必须和unit相同！若计量单位不为px，则需要手动设置unit参数！
+ * @param padding 可选 内边距 注意！计量单位必须和unit相同！若计量单位不为px，则需要手动设置unit参数！useOuterScroll=false 时会无效！
  * @param unit 可选 默认px
+ * @param scrollerType 可选 默认 self 会使用自身容器(自身容器默认撑满父元素，也可以手动指定width和height); window 使用最外层作为容器(为了兼容不同平台，需要在外部手动传入scrollTop和offsetTop)
+ * @param offsetTop useOuterScroll=true 时必填！用于设置列表 距离外部 scroll 容器顶部的 初始距离 useOuterScroll=false 时会无效！
+ * @param scrollTop useOuterScroll=true 时必填！用于使用父容器的 scrollTop 进行计算 useOuterScroll=false 时会无效！
+ * @param windowHeight useOuterScroll=true 时必填！用于设置windowHeight，由于不同平台不同设备内部判断起来太麻烦，所以外部传入
  * @param renderItem 必填 回调中的 style 必须设置到 item 上
  * @param onEnd 可选 触底事件
  */
-export const Waterfall: FC<WaterfallProps> = ({
-  data,
-  width,
-  height,
-  itemHeight,
-  column,
-  spaceX = 20,
-  spaceY = 20,
-  endOffset = 150,
-  padding = '',
-  unit = 'px',
-  renderItem,
-  onEnd,
-}): ReactElement => {
+const InnerWaterfall: React.ForwardRefRenderFunction<
+  HTMLDivElement,
+  WaterfallProps
+> = (
+  {
+    data,
+    width,
+    id,
+    height,
+    itemHeight,
+    column,
+    spaceX = 20,
+    spaceY = 20,
+    endOffset = 150,
+    padding = '',
+    unit = 'px',
+    scrollerType = 'self',
+    // offsetTop、scrollTop和windowHeight只有在scrollerType=window时才有用
+    offsetTop,
+    scrollTop: outerScrollTop,
+    windowHeight,
+    renderItem,
+    onEnd,
+  },
+  ref
+): ReactElement => {
   // 自带容器滚动高度
   const [scrollTop, setScrollTop] = useState(0)
   // 容器宽高取wrapperWidth和wrapperHeight, height和width只是外部传入
@@ -89,18 +123,16 @@ export const Waterfall: FC<WaterfallProps> = ({
 
   const scrollBarWidth = useRef(0)
 
-  const widthPerColumn = useMemo(
-    () =>
-      column
-        ? (wrapperWidth -
-            paddingInfo.paddingLeft -
-            paddingInfo.paddingRight -
-            (column - 1) * spaceX -
-            scrollBarWidth.current) /
+  const widthPerColumn = useMemo(() => {
+    return column
+      ? (wrapperWidth -
+          paddingInfo.paddingLeft -
+          paddingInfo.paddingRight -
+          (column - 1) * spaceX -
+          scrollBarWidth.current) /
           column
-        : wrapperWidth - paddingInfo.paddingLeft - paddingInfo.paddingRight,
-    [wrapperWidth, column, spaceX, scrollBarWidth.current, paddingInfo]
-  )
+      : wrapperWidth - paddingInfo.paddingLeft - paddingInfo.paddingRight
+  }, [wrapperWidth, column, spaceX, scrollBarWidth.current, paddingInfo])
 
   // 用于实现 width,height 未传时，组件自身的宽高自适应
   const adaptiveLayoutRef = useRef<HTMLDivElement>(null)
@@ -152,6 +184,7 @@ export const Waterfall: FC<WaterfallProps> = ({
       }, 0)
     } else {
       const rowHeights = getFullRowHeights()
+
       const maxValueIndex = findIndexOfMaxValue(rowHeights, 0)
 
       return rowHeights[maxValueIndex]
@@ -167,7 +200,7 @@ export const Waterfall: FC<WaterfallProps> = ({
   ])
 
   const computeRenderData = () => {
-    const arr = []
+    const arr: ReactNode[] = []
 
     // TODO: 这里可以优化，无需重复计算？
     const rowHeights: number[] = []
@@ -181,8 +214,17 @@ export const Waterfall: FC<WaterfallProps> = ({
                 .reduce((pre, _, index) => pre + itemHeightMap[index], 0)
 
         const height = itemHeightMap[i]
-        if (scrollTop > top + height || scrollTop + wrapperHeight < top)
-          continue
+        // 不同的scrollerType(容器方式)有不同的可视判断😁
+        if (scrollerType === 'self') {
+          if (scrollTop > top + height || scrollTop + wrapperHeight < top)
+            continue
+        } else if (scrollerType === 'window') {
+          if (
+            top + offsetTop! > scrollTop + windowHeight! ||
+            top + Number(itemHeightMap[i]) + offsetTop! < scrollTop
+          )
+            continue
+        }
         const style: CSSProperties = {
           boxSizing: 'border-box',
           position: 'absolute',
@@ -228,13 +270,21 @@ export const Waterfall: FC<WaterfallProps> = ({
           width: `${widthPerColumn}${unit}`,
           height: `${itemHeightMap[i]}${unit}`,
         }
-        // 没在可视区中，下一个
-        if (
-          top > scrollTop + wrapperHeight ||
-          top + Number(itemHeightMap[i]) < scrollTop
-        )
-          continue
-        // 在可视区中，推入
+
+        // 不同的scrollerType(容器方式)有不同的可视判断😁
+        if (scrollerType === 'self') {
+          if (
+            top > scrollTop + wrapperHeight ||
+            top + Number(itemHeightMap[i]) < scrollTop
+          )
+            continue
+        } else if (scrollerType === 'window') {
+          if (
+            top + offsetTop! > scrollTop + windowHeight! ||
+            top + Number(itemHeightMap[i]) + offsetTop! < scrollTop
+          )
+            continue
+        }
         arr.push(renderItem(i, style))
       }
     }
@@ -353,31 +403,63 @@ export const Waterfall: FC<WaterfallProps> = ({
     }
   }, [])
 
-  return (
-    <>
+  useEffect(() => {
+    if (scrollerType === 'window') {
+      setScrollTop(outerScrollTop!)
+    }
+  }, [outerScrollTop, scrollerType])
+
+  useImperativeHandle(ref, () => adaptiveLayoutRef.current as HTMLDivElement)
+
+  return scrollerType === 'window' ? (
+    <div
+      id={id}
+      ref={adaptiveLayoutRef}
+      style={{
+        boxSizing: 'border-box',
+        height: 'fit-content',
+        width: '100%',
+        padding,
+      }}
+    >
       <div
-        ref={adaptiveLayoutRef}
         style={{
-          boxSizing: 'border-box',
           position: 'relative',
-          display: 'flex',
-          width: width ? `${width}${unit}` : '100%',
-          height: height ? `${height}${unit}` : '100%',
-          overflow: 'auto',
-          padding,
+          width: '100%',
+          height: `${contentHeight}${unit}`,
         }}
-        onScroll={onScroll}
       >
-        <div
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: `${contentHeight}${unit}`,
-          }}
-        >
-          <>{renderData}</>
-        </div>
+        <>{renderData}</>
       </div>
-    </>
+    </div>
+  ) : (
+    <div
+      id={id}
+      ref={adaptiveLayoutRef}
+      style={{
+        boxSizing: 'border-box',
+        position: 'relative',
+        display: 'flex',
+        width: width ? `${width}${unit}` : '100%',
+        height: height ? `${height}${unit}` : '100%',
+        overflow: 'auto',
+        padding,
+      }}
+      onScroll={onScroll}
+    >
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: `${contentHeight}${unit}`,
+        }}
+      >
+        <>{renderData}</>
+      </div>
+    </div>
   )
 }
+
+export const Waterfall = forwardRef<HTMLDivElement, WaterfallProps>(
+  InnerWaterfall
+)
