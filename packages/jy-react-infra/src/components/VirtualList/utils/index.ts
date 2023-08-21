@@ -54,7 +54,7 @@ export const parsePadding = (
     }
   const paddingParams = padding.split(' ')
   switch (paddingParams.length) {
-    case 1:
+    case 1: {
       const p = Number(paddingParams[0].replace(unit, ''))
       return {
         paddingLeft: p,
@@ -62,7 +62,8 @@ export const parsePadding = (
         paddingTop: p,
         paddingBottom: p,
       }
-    case 2:
+    }
+    case 2: {
       const ptb = Number(paddingParams[0].replace(unit, ''))
       const plr = Number(paddingParams[1].replace(unit, ''))
       return {
@@ -71,17 +72,19 @@ export const parsePadding = (
         paddingTop: ptb,
         paddingBottom: ptb,
       }
-    case 3:
+    }
+    case 3: {
       const pt = Number(paddingParams[0].replace(unit, ''))
-      const _plr = Number(paddingParams[1].replace(unit, ''))
+      const plr = Number(paddingParams[1].replace(unit, ''))
       const pb = Number(paddingParams[2].replace(unit, ''))
 
       return {
-        paddingLeft: _plr,
-        paddingRight: _plr,
+        paddingLeft: plr,
+        paddingRight: plr,
         paddingTop: pt,
         paddingBottom: pb,
       }
+    }
     case 4:
       return {
         paddingLeft: Number(paddingParams[3].replace(unit, '')),
