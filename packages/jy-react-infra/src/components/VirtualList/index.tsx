@@ -161,11 +161,22 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
     const minHeightIndex = findIndexOfMinValue(rowHeights, 0)
     const minHeight = rowHeights[minHeightIndex]
 
-    if (
-      scrollTop + wrapperHeight + endOffset >= Number(minHeight) &&
-      typeof onEnd === 'function'
-    ) {
-      onEnd()
+    // 不同的scrollerType(容器方式)有不同的可视判断😁
+    if (scrollerType === 'self') {
+      if (
+        scrollTop + wrapperHeight + endOffset >= Number(minHeight) &&
+        typeof onEnd === 'function'
+      ) {
+        onEnd()
+      }
+    } else if (scrollerType === 'window') {
+      if (
+        scrollTop + offsetTop! + windowHeight! + endOffset >=
+          Number(minHeight) &&
+        typeof onEnd === 'function'
+      ) {
+        onEnd()
+      }
     }
   }, 25)
 
