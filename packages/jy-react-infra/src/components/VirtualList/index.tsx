@@ -171,7 +171,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
       }
     } else if (scrollerType === 'window') {
       if (
-        scrollTop + offsetTop! + windowHeight! + endOffset >=
+        scrollTop - offsetTop! + windowHeight! + endOffset >=
           Number(minHeight) &&
         typeof onEnd === 'function'
       ) {
