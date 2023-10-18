@@ -227,6 +227,9 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
                 )
 
         const height = itemHeightMap[i]
+        rowHeights[0] =
+          (rowHeights[0] || 0) + Number(height) + (i === 0 ? 0 : spaceY)
+
         // 不同的scrollerType(容器方式)有不同的可视判断😁
         if (scrollerType === 'self') {
           if (scrollTop > top + height || scrollTop + wrapperHeight < top)
