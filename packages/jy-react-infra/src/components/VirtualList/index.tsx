@@ -188,9 +188,10 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
       }
       let _contentHeight = 0
       new Array(itemCount).fill(0).forEach((_, index) => {
-        _contentHeight += itemHeightMap[index]
+        _contentHeight += itemHeightMap[index] + spaceY
       })
-      return _contentHeight
+
+      return _contentHeight - spaceY
     } else {
       const rowHeights = getFullRowHeights()
 
@@ -220,7 +221,10 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
             ? 0
             : new Array(i)
                 .fill(0)
-                .reduce((pre, _, index) => pre + itemHeightMap[index], 0)
+                .reduce(
+                  (pre, _, index) => pre + itemHeightMap[index] + spaceY,
+                  0
+                )
 
         const height = itemHeightMap[i]
         // 不同的scrollerType(容器方式)有不同的可视判断😁
