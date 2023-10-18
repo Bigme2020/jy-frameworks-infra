@@ -186,13 +186,11 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
       if (typeof itemHeight === 'number') {
         return itemCount * itemHeight
       }
-      return new Array(itemCount).fill(0).reduce((pre, _, index) => {
-        return pre +
-          itemHeightMap[index] +
-          (index === 0 || index === itemCount - 1)
-          ? 0
-          : spaceY
-      }, 0)
+      let _contentHeight = 0
+      new Array(itemCount).fill(0).forEach((_, index) => {
+        _contentHeight += itemHeightMap[index]
+      })
+      return _contentHeight
     } else {
       const rowHeights = getFullRowHeights()
 

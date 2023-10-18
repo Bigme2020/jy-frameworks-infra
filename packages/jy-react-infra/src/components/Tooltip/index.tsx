@@ -1,94 +1,101 @@
-import React, {
+import {
   FC,
   ReactElement,
-  useState,
-  CSSProperties,
-  cloneElement,
+  ReactNode,
+  createContext,
+  memo,
+  useCallback,
   useMemo,
-} from 'react'
-import styled from 'styled-components'
-import { useFloating } from '@floating-ui/react-dom'
-import Portal from '../Portal'
+  useState,
+} from "react";
 
-export type Placement = 'left' | 'right' | 'top' | 'bottom'
+import { UseFloatingOptions, ReferenceType } from "@floating-ui/react";
 
-export interface TooltipProps {
-  title: string
-  children: any
-  placement?: Placement
-  style?: CSSProperties
-}
+import { TriggerAction, TriggerActionOption } from "./types";
+import { useTooltipFloating } from "./hooks";
 
-interface TooltipAttrs {
-  visible: boolean
-}
+type ContextType = ReturnType<typeof useTooltipFloating> & {
+  triggerActionOptions?: TriggerActionOption[];
+  currentTrigger: TriggerAction;
+  setCurrentTrigger: React.Dispatch<React.SetStateAction<TriggerAction>>;
+  resetCurrentTrigger: () => void;
+  registerdContent: string[];
+  setRegisterdContent: React.Dispatch<React.SetStateAction<string[]>>;
+  setUseFloatingOptions: React.Dispatch<
+    React.SetStateAction<Partial<UseFloatingOptions<ReferenceType>>>
+  >;
+};
 
-const StyledTooltip = styled.div<TooltipAttrs>`
-  visibility: ${(props) => (props.visible ? 'visible' : 'hidden')};
-  white-space: nowrap;
-  position: absolute;
-  border-radius: 4px;
-  background-color: #252627;
-  border: 1px solid #494a4b;
-  color: #bebebe;
-  font-size: 12px;
-  padding: 4px;
-  user-select: none;
-`
+type TooltipProps = {
+  triggerActionOptions?: TriggerActionOption[];
+  children?: ReactNode;
+  floatingOptions?: Partial<UseFloatingOptions<ReferenceType>>;
+};
 
-const Tooltip: FC<TooltipProps> = ({
-  title,
-  children,
-  placement,
-  style: customStyle,
-}): ReactElement => {
-  const [render, setRender] = useState(false)
-  const [visible, setVisible] = useState(false)
-  const { x, y, strategy, reference, floating } = useFloating({
-    placement,
-  })
+export const TooltipContext = createContext<ContextType | null>(null);
 
-  const onHover = () => {
-    setRender(true)
-    setVisible(true)
+/**
+ * 在原来 useFloating 设置的基础上，增加了如下设置
+ *
+ * 支持 trigger 和 content 一对一、一对多，不支持多对多
+ *
+ * @param triggerActionOptions 支持的 trigger 事件配置数组，可填写 click,hover,focus 字符 或 类似这样的对象 { action: 'click', options?: { stopPropagation?: boolean } }
+ * @param floatingOptions 全局配置，若每个 tooltip 有自己的配置，这里的全局配置会被替换而非合并
+ */
+export const Tooltip: FC<TooltipProps> = memo(
+  ({
+    triggerActionOptions = ["click"],
+    children,
+    floatingOptions,
+  }): ReactElement => {
+    const [useFloatingOptions, setUseFloatingOptions] = useState<
+      Partial<UseFloatingOptions<ReferenceType>>
+    >(floatingOptions || {});
+    const [currentTrigger, setCurrentTrigger] =
+      useState<TriggerAction>("hover");
+
+    const resetCurrentTrigger = useCallback(() => {
+      setCurrentTrigger("hover");
+    }, [triggerActionOptions]);
+    const [registerdContent, setRegisterdContent] = useState<string[]>([]);
+
+    const normalizedTriggerActions: TriggerAction[] = useMemo(
+      () =>
+        triggerActionOptions.map((actionOption) => {
+          if (typeof actionOption === "string") {
+            return actionOption as TriggerAction;
+          } else {
+            return actionOption.action;
+          }
+        }),
+      [triggerActionOptions]
+    );
+
+    const useTooltipFloatingData = useTooltipFloating({
+      ...useFloatingOptions,
+      triggerActions: normalizedTriggerActions,
+      currentTrigger,
+      resetCurrentTrigger,
+      registerdContent,
+    });
+
+    const providerValue = {
+      // 自定义值
+      currentTrigger,
+      setCurrentTrigger,
+      resetCurrentTrigger,
+      registerdContent,
+      setRegisterdContent,
+      triggerActionOptions: triggerActionOptions as TriggerActionOption[],
+      setUseFloatingOptions,
+      // useTooltip 返回的值
+      ...useTooltipFloatingData,
+    };
+
+    return (
+      <TooltipContext.Provider value={providerValue}>
+        {children}
+      </TooltipContext.Provider>
+    );
   }
-  const onLeave = () => {
-    setVisible(false)
-    setRender(false)
-  }
-
-  const el = useMemo(() => {
-    const cloneEl = cloneElement(children, {
-      onMouseEnter: onHover,
-      onMouseLeave: onLeave,
-      ref: reference,
-    })
-    return cloneEl
-  }, [children])
-
-  return (
-    <>
-      {render ? (
-        <Portal>
-          <StyledTooltip
-            onMouseEnter={onHover}
-            onMouseLeave={onLeave}
-            visible={visible}
-            style={{
-              position: strategy,
-              left: x || 0,
-              top: y || 0,
-              ...customStyle,
-            }}
-            ref={floating}
-          >
-            {title}
-          </StyledTooltip>
-        </Portal>
-      ) : null}
-      {el}
-    </>
-  )
-}
-
-export default Tooltip
+);
