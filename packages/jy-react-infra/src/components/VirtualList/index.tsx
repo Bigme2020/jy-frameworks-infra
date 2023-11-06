@@ -18,7 +18,7 @@ import {
   getScrollBarWidth,
   parsePadding,
 } from './utils'
-import { useThrottle } from '../../hooks'
+import { useThrottle, useDebounce } from '../../hooks'
 
 type WindowScrollerProps = {
   scrollerType: 'window'
@@ -34,7 +34,7 @@ type SelfScrollerProps = {
   windowHeight?: number
 }
 
-type WaterfallProps = {
+export type WaterfallProps = {
   data: Array<any>
   itemHeight:
     | number
@@ -118,6 +118,11 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
     [padding, unit]
   )
 
+  const debouncedOnEnd = useDebounce(onEnd || (() => {}), {
+    interval: 200,
+    type: 'front',
+  })
+
   // lastColumn 用来记录上次的column，来监听column是否变化
   const lastColumn = useRef(column)
 
@@ -167,7 +172,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
         scrollTop + wrapperHeight + endOffset >= Number(minHeight) &&
         typeof onEnd === 'function'
       ) {
-        onEnd()
+        debouncedOnEnd()
       }
     } else if (scrollerType === 'window') {
       if (
@@ -175,10 +180,10 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
           Number(minHeight) &&
         typeof onEnd === 'function'
       ) {
-        onEnd()
+        debouncedOnEnd()
       }
     }
-  }, 25)
+  }, 10)
 
   // 内容高度
   const contentHeight = useMemo<number>(() => {
@@ -229,7 +234,6 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
         const height = itemHeightMap[i]
         rowHeights[0] =
           (rowHeights[0] || 0) + Number(height) + (i === 0 ? 0 : spaceY)
-
         // 不同的scrollerType(容器方式)有不同的可视判断😁
         if (scrollerType === 'self') {
           if (scrollTop > top + height || scrollTop + wrapperHeight < top)
@@ -434,7 +438,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
       style={{
         boxSizing: 'border-box',
         height: 'fit-content',
-        width: '100%',
+        width: width ? `${width}${unit}` : '100%',
         padding,
       }}
     >
