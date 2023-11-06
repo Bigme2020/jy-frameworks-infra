@@ -1,4 +1,4 @@
-import {
+import React, {
   FC,
   ReactElement,
   ReactNode,
@@ -7,32 +7,32 @@ import {
   useCallback,
   useMemo,
   useState,
-} from "react";
+} from 'react'
 
-import { UseFloatingOptions, ReferenceType } from "@floating-ui/react";
+import { UseFloatingOptions, ReferenceType } from '@floating-ui/react'
 
-import { TriggerAction, TriggerActionOption } from "./types";
-import { useTooltipFloating } from "./hooks";
+import { TriggerAction, TriggerActionOption } from './types'
+import { useTooltipFloating } from './hooks'
 
 type ContextType = ReturnType<typeof useTooltipFloating> & {
-  triggerActionOptions?: TriggerActionOption[];
-  currentTrigger: TriggerAction;
-  setCurrentTrigger: React.Dispatch<React.SetStateAction<TriggerAction>>;
-  resetCurrentTrigger: () => void;
-  registerdContent: string[];
-  setRegisterdContent: React.Dispatch<React.SetStateAction<string[]>>;
+  triggerActionOptions?: TriggerActionOption[]
+  currentTrigger: TriggerAction
+  setCurrentTrigger: React.Dispatch<React.SetStateAction<TriggerAction>>
+  resetCurrentTrigger: () => void
+  registerdContent: string[]
+  setRegisterdContent: React.Dispatch<React.SetStateAction<string[]>>
   setUseFloatingOptions: React.Dispatch<
     React.SetStateAction<Partial<UseFloatingOptions<ReferenceType>>>
-  >;
-};
+  >
+}
 
 type TooltipProps = {
-  triggerActionOptions?: TriggerActionOption[];
-  children?: ReactNode;
-  floatingOptions?: Partial<UseFloatingOptions<ReferenceType>>;
-};
+  triggerActionOptions?: TriggerActionOption[]
+  children?: ReactNode
+  floatingOptions?: Partial<UseFloatingOptions<ReferenceType>>
+}
 
-export const TooltipContext = createContext<ContextType | null>(null);
+export const TooltipContext = createContext<ContextType | null>(null)
 
 /**
  * 在原来 useFloating 设置的基础上，增加了如下设置
@@ -44,40 +44,40 @@ export const TooltipContext = createContext<ContextType | null>(null);
  */
 export const Tooltip: FC<TooltipProps> = memo(
   ({
-    triggerActionOptions = ["click"],
+    triggerActionOptions = ['click'],
     children,
     floatingOptions,
   }): ReactElement => {
     const [useFloatingOptions, setUseFloatingOptions] = useState<
       Partial<UseFloatingOptions<ReferenceType>>
-    >(floatingOptions || {});
-    const [currentTrigger, setCurrentTrigger] =
-      useState<TriggerAction>("hover");
+    >(floatingOptions || {})
+    const [currentTrigger, setCurrentTrigger] = useState<TriggerAction>('hover')
 
     const resetCurrentTrigger = useCallback(() => {
-      setCurrentTrigger("hover");
-    }, [triggerActionOptions]);
-    const [registerdContent, setRegisterdContent] = useState<string[]>([]);
+      setCurrentTrigger('hover')
+    }, [triggerActionOptions])
+    const [registerdContent, setRegisterdContent] = useState<string[]>([])
 
     const normalizedTriggerActions: TriggerAction[] = useMemo(
       () =>
         triggerActionOptions.map((actionOption) => {
-          if (typeof actionOption === "string") {
-            return actionOption as TriggerAction;
+          if (typeof actionOption === 'string') {
+            return actionOption as TriggerAction
           } else {
-            return actionOption.action;
+            return actionOption.action
           }
         }),
       [triggerActionOptions]
-    );
+    )
 
     const useTooltipFloatingData = useTooltipFloating({
       ...useFloatingOptions,
       triggerActions: normalizedTriggerActions,
+      triggerActionOptions: triggerActionOptions as any,
       currentTrigger,
       resetCurrentTrigger,
       registerdContent,
-    });
+    })
 
     const providerValue = {
       // 自定义值
@@ -90,12 +90,15 @@ export const Tooltip: FC<TooltipProps> = memo(
       setUseFloatingOptions,
       // useTooltip 返回的值
       ...useTooltipFloatingData,
-    };
+    }
 
     return (
       <TooltipContext.Provider value={providerValue}>
         {children}
       </TooltipContext.Provider>
-    );
+    )
   }
-);
+)
+
+export * from './TooltipContent'
+export * from './TooltipTrigger'
