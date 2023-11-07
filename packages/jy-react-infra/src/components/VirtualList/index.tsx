@@ -328,8 +328,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
   // 计算每个元素的 itemHeight
   const computeItemHeight = () => {
     for (let i = 0; i < itemCount; i++) {
-      // 由于目前没有碰到 元素中途高度变更的情况，所以这里做了元素的高度缓存（即已渲染出来过的元素，其高度不会再次计算），避免重复计算
-      if (itemHeightMap[i]) continue
+      // 这里本来想利用 itemHeightMap 做高度缓存的，但是 data 删除或者修改其中一项后导致的高度变更是无法预测的，故没有做缓存
       if (typeof itemHeight === 'function') {
         if (itemHeight.constructor.name === 'AsyncFunction') {
           // async标记的函数: async () => {}
