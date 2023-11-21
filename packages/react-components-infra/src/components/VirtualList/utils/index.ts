@@ -28,12 +28,7 @@ export const getScrollBarWidth = () => {
   const offsetWidth = scroller.offsetWidth
   const clientWidth = scroller.clientWidth
 
-  console.log({
-    offsetWidth,
-    clientWidth,
-  })
-
-  return offsetWidth - clientWidth || 0
+  return offsetWidth - clientWidth
 }
 
 export const parsePadding = (

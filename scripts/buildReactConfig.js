@@ -1,4 +1,3 @@
-const packageJson = require("../packages/react-components/package.json");
 const path = require("path");
 const fs = require("fs");
 // rollup插件
@@ -11,7 +10,8 @@ const postcss = require("rollup-plugin-postcss"); // （已安装postcss）用�
 const postcssPresetEnv = require("postcss-preset-env");
 const babel = require("@rollup/plugin-babel").default; // （已安装@babel/core @babel/preset-env）用于无缝衔接rollup与babel
 
-const rootDir = path.join(__dirname, "../packages/react-components");
+const rootDir = path.join(__dirname, "../packages/react-components-infra");
+const packageJson = require(path.join(rootDir, "./package.json"));
 const dependencies = Object.keys(packageJson.dependencies);
 
 const commonConfig = {
@@ -72,7 +72,6 @@ const buildDts = () => {
   };
 };
 
-// TODO: hooks和components待区分打包，并且hooks待分包
 // 分包
 const buildSeperate = () => {
   const seperateBuildConfig = [];

@@ -12,13 +12,8 @@ import React, {
   useImperativeHandle,
 } from 'react'
 
-import {
-  findIndexOfMaxValue,
-  findIndexOfMinValue,
-  getScrollBarWidth,
-  parsePadding,
-} from './utils'
-import { useThrottle } from '../../hooks'
+import { findIndexOfMaxValue, findIndexOfMinValue, getScrollBarWidth, parsePadding } from './utils'
+import { useThrottle, useDebounce } from './hooks'
 
 type WindowScrollerProps = {
   scrollerType: 'window'
@@ -34,12 +29,9 @@ type SelfScrollerProps = {
   windowHeight?: number
 }
 
-type WaterfallProps = {
+export type VirtualListProps = {
   data: Array<any>
-  itemHeight:
-    | number
-    | ((index: number) => number)
-    | ((index: number) => Promise<number>)
+  itemHeight: number | ((index: number) => number) | ((index: number) => Promise<number>)
   id?: string
   width?: number
   height?: number
@@ -74,10 +66,7 @@ type WaterfallProps = {
  * @param renderItem 必填 回调中的 style 必须设置到 item 上
  * @param onEnd 可选 触底事件
  */
-const InnerWaterfall: React.ForwardRefRenderFunction<
-  HTMLDivElement,
-  WaterfallProps
-> = (
+const InnerVirtualList: React.ForwardRefRenderFunction<HTMLDivElement, VirtualListProps> = (
   {
     data,
     width,
@@ -108,15 +97,15 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
   // renderData 用于表示当前需要渲染的列表
   const [renderData, setRenderData] = useState<ReactNode[]>([])
   // itemHeightMap 记录了所有item的高度 key为item索引 value为item高度
-  const [itemHeightMap, setItemHeightMap] = useState<
-    Record<string | number, number>
-  >({})
+  const [itemHeightMap, setItemHeightMap] = useState<Record<string | number, number>>({})
 
   // padding解析
-  const paddingInfo = useMemo(
-    () => parsePadding(padding, unit),
-    [padding, unit]
-  )
+  const paddingInfo = useMemo(() => parsePadding(padding, unit), [padding, unit])
+
+  const debouncedOnEnd = useDebounce(onEnd || (() => {}), {
+    interval: 200,
+    type: 'front',
+  })
 
   // lastColumn 用来记录上次的column，来监听column是否变化
   const lastColumn = useRef(column)
@@ -149,8 +138,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
       } else {
         const leftIndex = findIndexOfMinValue(rowHeights, 0)
         if (leftIndex === -1) return []
-        rowHeights[leftIndex] =
-          Number(rowHeights[leftIndex]) + Number(itemHeightMap[i]) + spaceY
+        rowHeights[leftIndex] = Number(rowHeights[leftIndex]) + Number(itemHeightMap[i]) + spaceY
       }
     }
     // spaceY是两元素间的距离，上面没有记录行数虽然方便了计算但是会导致最后多算一行spaceY，需要在最后的结果中减掉
@@ -163,22 +151,15 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
 
     // 不同的scrollerType(容器方式)有不同的可视判断😁
     if (scrollerType === 'self') {
-      if (
-        scrollTop + wrapperHeight + endOffset >= Number(minHeight) &&
-        typeof onEnd === 'function'
-      ) {
-        onEnd()
+      if (scrollTop + wrapperHeight + endOffset >= Number(minHeight) && typeof onEnd === 'function') {
+        debouncedOnEnd()
       }
     } else if (scrollerType === 'window') {
-      if (
-        scrollTop - offsetTop! + windowHeight! + endOffset >=
-          Number(minHeight) &&
-        typeof onEnd === 'function'
-      ) {
-        onEnd()
+      if (scrollTop - offsetTop! + windowHeight! + endOffset >= Number(minHeight) && typeof onEnd === 'function') {
+        debouncedOnEnd()
       }
     }
-  }, 25)
+  }, 10)
 
   // 内容高度
   const contentHeight = useMemo<number>(() => {
@@ -186,13 +167,12 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
       if (typeof itemHeight === 'number') {
         return itemCount * itemHeight
       }
-      return new Array(itemCount).fill(0).reduce((pre, _, index) => {
-        return pre +
-          itemHeightMap[index] +
-          (index === 0 || index === itemCount - 1)
-          ? 0
-          : spaceY
-      }, 0)
+      let _contentHeight = 0
+      new Array(itemCount).fill(0).forEach((_, index) => {
+        _contentHeight += itemHeightMap[index] + spaceY
+      })
+
+      return _contentHeight - spaceY
     } else {
       const rowHeights = getFullRowHeights()
 
@@ -200,15 +180,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
 
       return rowHeights[maxValueIndex]
     }
-  }, [
-    itemCount,
-    itemHeight,
-    itemHeightMap,
-    column,
-    spaceY,
-    getFullRowHeights,
-    paddingInfo,
-  ])
+  }, [itemCount, itemHeight, itemHeightMap, column, spaceY, getFullRowHeights, paddingInfo])
 
   const computeRenderData = () => {
     const arr: ReactNode[] = []
@@ -217,23 +189,15 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
     const rowHeights: number[] = []
     for (let i = 0; i < itemCount; i++) {
       if (!column || column === 1) {
-        const top =
-          i === 0
-            ? 0
-            : new Array(i)
-                .fill(0)
-                .reduce((pre, _, index) => pre + itemHeightMap[index], 0)
+        const top = i === 0 ? 0 : new Array(i).fill(0).reduce((pre, _, index) => pre + itemHeightMap[index] + spaceY, 0)
 
         const height = itemHeightMap[i]
+        rowHeights[0] = (rowHeights[0] || 0) + Number(height) + (i === 0 ? 0 : spaceY)
         // 不同的scrollerType(容器方式)有不同的可视判断😁
         if (scrollerType === 'self') {
-          if (scrollTop > top + height || scrollTop + wrapperHeight < top)
-            continue
+          if (scrollTop > top + height || scrollTop + wrapperHeight < top) continue
         } else if (scrollerType === 'window') {
-          if (
-            top + offsetTop! > scrollTop + windowHeight! ||
-            top + Number(itemHeightMap[i]) + offsetTop! < scrollTop
-          )
+          if (top + offsetTop! > scrollTop + windowHeight! || top + Number(itemHeightMap[i]) + offsetTop! < scrollTop)
             continue
         }
         const style: CSSProperties = {
@@ -254,8 +218,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
           const leftIndex = findIndexOfMinValue(rowHeights, 0)
           left = leftIndex * widthPerColumn + leftIndex * spaceX
           top = Number(rowHeights[leftIndex])
-          rowHeights[leftIndex] =
-            Number(rowHeights[leftIndex]) + Number(itemHeightMap[i]) + spaceY
+          rowHeights[leftIndex] = Number(rowHeights[leftIndex]) + Number(itemHeightMap[i]) + spaceY
         } else {
           // 当rowHeights长度和column不一样，说明时第一行，top直接0
           left = indexOfCurrentRow * widthPerColumn + indexOfCurrentRow * spaceX
@@ -284,16 +247,9 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
 
         // 不同的scrollerType(容器方式)有不同的可视判断😁
         if (scrollerType === 'self') {
-          if (
-            top > scrollTop + wrapperHeight ||
-            top + Number(itemHeightMap[i]) < scrollTop
-          )
-            continue
+          if (top > scrollTop + wrapperHeight || top + Number(itemHeightMap[i]) < scrollTop) continue
         } else if (scrollerType === 'window') {
-          if (
-            top + offsetTop! > scrollTop + windowHeight! ||
-            top + Number(itemHeightMap[i]) + offsetTop! < scrollTop
-          )
+          if (top + offsetTop! > scrollTop + windowHeight! || top + Number(itemHeightMap[i]) + offsetTop! < scrollTop)
             continue
         }
         arr.push(renderItem(i, style))
@@ -319,8 +275,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
   // 计算每个元素的 itemHeight
   const computeItemHeight = () => {
     for (let i = 0; i < itemCount; i++) {
-      // 由于目前没有碰到 元素中途高度变更的情况，所以这里做了元素的高度缓存（即已渲染出来过的元素，其高度不会再次计算），避免重复计算
-      if (itemHeightMap[i]) continue
+      // 这里本来想利用 itemHeightMap 做高度缓存的，但是 data 删除或者修改其中一项后导致的高度变更是无法预测的，故没有做缓存
       if (typeof itemHeight === 'function') {
         if (itemHeight.constructor.name === 'AsyncFunction') {
           // async标记的函数: async () => {}
@@ -369,17 +324,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
   // 排列渲染触发
   useEffect(() => {
     computeRenderData()
-  }, [
-    data,
-    wrapperHeight,
-    itemHeightMap,
-    widthPerColumn,
-    itemCount,
-    spaceX,
-    spaceY,
-    scrollTop,
-    renderItem,
-  ])
+  }, [data, wrapperHeight, itemHeightMap, widthPerColumn, itemCount, spaceX, spaceY, scrollTop, renderItem])
 
   // 初始化设置 (包含了 宽高计算 以及 scrollbar 宽度测量)
   useEffect(() => {
@@ -429,7 +374,7 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
       style={{
         boxSizing: 'border-box',
         height: 'fit-content',
-        width: '100%',
+        width: width ? `${width}${unit}` : '100%',
         padding,
       }}
     >
@@ -471,6 +416,4 @@ const InnerWaterfall: React.ForwardRefRenderFunction<
   )
 }
 
-export const Waterfall = forwardRef<HTMLDivElement, WaterfallProps>(
-  InnerWaterfall
-)
+export const VirtualList = forwardRef<HTMLDivElement, VirtualListProps>(InnerVirtualList)
